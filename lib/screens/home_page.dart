@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:smart_spend/services/settings_service.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:smart_spend/theme/app_theme.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -40,8 +41,8 @@ class _HomePageState extends State<HomePage>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _telegramService = TelegramService(
-      botToken: '7535882371:AAGiDcqCmgJkQQrXi3qbuto0kT1pOSgEZv8',
-      chatId: '1148090717',
+      botToken: dotenv.env['TELEGRAM_BOT_TOKEN'] ?? '',
+      chatId: dotenv.env['TELEGRAM_CHAT_ID'] ?? '',
     );
     _loadExpenses();
   }
