@@ -1,14 +1,19 @@
+import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:smart_spend/models/expense.dart';
 
 class TelegramService {
-  final String botToken;
-  final String chatId;
+  final String _botToken;
+  final String _chatId;
+  final String _baseUrl;
 
   TelegramService({
-    required this.botToken,
-    required this.chatId,
-  });
+    required String botToken,
+    required String chatId,
+  })  : _botToken = botToken,
+        _chatId = chatId,
+        _baseUrl = 'https://api.telegram.org/bot$botToken';
 
   Future<void> sendDailyReport(List<Expense> expenses) async {
     final total = expenses.fold(0.0, (sum, expense) => sum + expense.amount);
@@ -22,18 +27,28 @@ class TelegramService {
 ${expenses.map((e) => '- ${e.description}: ${e.amount.toStringAsFixed(0)}đ').join('\n')}
 ''';
 
-    final url = 'https://api.telegram.org/bot$botToken/sendMessage';
-    final response = await http.post(
-      Uri.parse(url),
-      body: {
-        'chat_id': chatId,
-        'text': message,
-        'parse_mode': 'HTML',
-      },
-    );
+    await sendMessage(message);
+  }
 
-    if (response.statusCode != 200) {
-      throw Exception('Failed to send Telegram message: ${response.body}');
+  Future<void> sendMessage(String message,
+      {String parseMode = 'Markdown'}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/sendMessage'),
+        body: {
+          'chat_id': _chatId,
+          'text': message,
+          'parse_mode': parseMode,
+        },
+      );
+
+      if (response.statusCode != 200) {
+        final error = json.decode(response.body);
+        throw Exception('Failed to send message: ${error['description']}');
+      }
+    } catch (e) {
+      print('Error sending Telegram message: $e');
+      rethrow;
     }
   }
 }

@@ -20,6 +20,21 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        selectedItemColor: primaryColor,
+        unselectedItemColor: Colors.grey,
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+        type: BottomNavigationBarType.fixed,
+        elevation: 8,
+        backgroundColor: cardColor,
+        selectedIconTheme: IconThemeData(
+          size: 28,
+        ),
+        unselectedIconTheme: IconThemeData(
+          size: 24,
+        ),
+      ),
       tabBarTheme: const TabBarTheme(
         labelColor: Colors.white,
         unselectedLabelColor: Colors.white70,
@@ -85,6 +100,21 @@ class AppTheme {
         backgroundColor: Color(0xFF2C2C2C),
         foregroundColor: Colors.white,
         elevation: 0,
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        selectedItemColor: primaryColor,
+        unselectedItemColor: Colors.grey,
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+        type: BottomNavigationBarType.fixed,
+        elevation: 8,
+        backgroundColor: Color(0xFF2C2C2C),
+        selectedIconTheme: IconThemeData(
+          size: 28,
+        ),
+        unselectedIconTheme: IconThemeData(
+          size: 24,
+        ),
       ),
       tabBarTheme: const TabBarTheme(
         labelColor: Colors.white,

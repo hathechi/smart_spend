@@ -36,9 +36,42 @@ class StorageService {
         return [];
       }
 
-      print('Debug: Loading expenses - $expensesJson');
-      final List<dynamic> decoded = jsonDecode(expensesJson);
-      return decoded.map((json) => Expense.fromJson(json)).toList();
+      print('Debug: Raw expenses data - $expensesJson');
+
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(expensesJson);
+        print('Debug: Decoded JSON type - ${decoded.runtimeType}');
+      } catch (e) {
+        print('Debug: Error decoding JSON - $e');
+        return [];
+      }
+
+      if (decoded is! List) {
+        print(
+            'Debug: Invalid data format - expected List but got ${decoded.runtimeType}');
+        return [];
+      }
+
+      final List<Expense> expenses = [];
+      for (var item in decoded) {
+        try {
+          if (item is! Map<String, dynamic>) {
+            print('Debug: Invalid expense item type - ${item.runtimeType}');
+            print('Debug: Invalid expense item - $item');
+            continue;
+          }
+          final expense = Expense.fromJson(item);
+          expenses.add(expense);
+        } catch (e) {
+          print('Debug: Error parsing expense item - $e');
+          print('Debug: Problematic item - $item');
+          continue;
+        }
+      }
+
+      print('Debug: Successfully loaded ${expenses.length} expenses');
+      return expenses;
     } catch (e) {
       print('Debug: Error in getExpenses - $e');
       return [];

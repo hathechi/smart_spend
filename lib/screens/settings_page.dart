@@ -11,9 +11,6 @@ class SettingsPage extends StatelessWidget {
     final settingsService = Provider.of<SettingsService>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('settings.title'.tr()),
-      ),
       body: ListView(
         children: [
           ListTile(

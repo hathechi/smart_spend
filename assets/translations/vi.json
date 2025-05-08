@@ -2,20 +2,57 @@
   "app": {
     "title": "Smart Spend"
   },
+  "navigation": {
+    "add": "Thêm",
+    "list": "Danh sách",
+    "charts": "Biểu đồ",
+    "settings": "Cài đặt"
+  },
   "tabs": {
-    "add_expense": "Nhập chi tiêu",
-    "view_expenses": "Xem chi tiêu",
+    "add": "Thêm",
+    "list": "Danh sách",
+    "charts": "Biểu đồ",
     "settings": "Cài đặt"
   },
   "expense": {
+    "title": "Chi tiêu",
+    "purpose": "Mục đích",
     "amount": "Số tiền",
-    "purpose": "Mục đích chi tiêu",
+    "date": "Ngày",
+    "description": "Mô tả",
     "add": "Thêm chi tiêu",
-    "total": "Tổng chi tiêu",
-    "empty": "Không có chi tiêu nào",
-    "time": "Thời gian",
+    "edit": "Sửa chi tiêu",
     "delete": "Xóa chi tiêu",
-    "recent": "Chi tiêu gần nhất"
+    "list": "Danh sách",
+    "charts": "Biểu đồ",
+    "total": "Tổng chi tiêu",
+    "category": "Danh mục",
+    "daily": "Theo ngày",
+    "no_data": "Không có dữ liệu để hiển thị",
+    "add_new": "Hãy thêm chi tiêu mới",
+    "empty": "Chưa có chi tiêu nào",
+    "delete_confirm": "Bạn có chắc chắn muốn xóa chi tiêu này?",
+    "delete_success": "Đã xóa chi tiêu thành công",
+    "delete_error": "Có lỗi xảy ra khi xóa chi tiêu",
+    "analyze": "Phân tích",
+    "analyzing": "Đang phân tích...",
+    "analyze_success": "Đã gửi báo cáo chi tiêu thành công",
+    "analyze_error": "Có lỗi xảy ra khi phân tích chi tiêu",
+    "filter": {
+      "today": "Hôm nay",
+      "yesterday": "Hôm qua",
+      "this_week": "Tuần này",
+      "last_week": "Tuần trước",
+      "this_month": "Tháng này",
+      "last_month": "Tháng trước",
+      "all": "Tất cả"
+    },
+    "chart": {
+      "by_category": "Chi tiêu theo danh mục",
+      "by_date": "Chi tiêu theo ngày",
+      "category_details": "Chi tiết theo danh mục",
+      "no_data": "Chưa có dữ liệu chi tiêu"
+    }
   },
   "settings": {
     "title": "Cài đặt",
@@ -27,16 +64,47 @@
     },
     "language": {
       "title": "Ngôn ngữ",
-      "subtitle": "Chọn ngôn ngữ hiển thị",
-      "vi": "Tiếng Việt",
-      "en": "Tiếng Anh"
+      "subtitle": "Thay đổi ngôn ngữ ứng dụng",
+      "en": "Tiếng Anh",
+      "vi": "Tiếng Việt"
+    },
+    "theme": "Giao diện",
+    "notifications": {
+      "title": "Thông báo",
+      "subtitle": "Quản lý thông báo",
+      "daily_report": "Báo cáo hàng ngày",
+      "weekly_report": "Báo cáo hàng tuần",
+      "monthly_report": "Báo cáo hàng tháng"
+    },
+    "about": {
+      "title": "Giới thiệu",
+      "subtitle": "Thông tin ứng dụng",
+      "version": "Phiên bản",
+      "developer": "Nhà phát triển",
+      "contact": "Liên hệ"
     }
   },
   "messages": {
     "fill_info": "Vui lòng điền đầy đủ thông tin",
-    "add_success": "Đã thêm chi tiêu {0}",
+    "add_success": "Thêm chi tiêu thành công",
     "add_error": "Không thể thêm chi tiêu",
-    "delete_success": "Đã xóa chi tiêu",
-    "delete_error": "Không thể xóa chi tiêu"
+    "delete_success": "Xóa chi tiêu thành công",
+    "delete_error": "Không thể xóa chi tiêu",
+    "no_expenses": "Không có chi tiêu để phân tích",
+    "analyze": "Phân tích",
+    "analyzing": "Đang phân tích...",
+    "analysis_success": "Phân tích chi tiêu thành công",
+    "analysis_error": "Không thể phân tích chi tiêu",
+    "report_sent": "Đã gửi báo cáo thành công",
+    "report_error": "Không thể gửi báo cáo"
+  },
+  "filters": {
+    "all": "Tất cả",
+    "today": "Hôm nay",
+    "yesterday": "Hôm qua",
+    "this_week": "Tuần này",
+    "last_week": "Tuần trước",
+    "this_month": "Tháng này",
+    "last_month": "Tháng trước"
   }
 }

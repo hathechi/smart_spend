@@ -26,12 +26,27 @@ class Expense {
   }
 
   factory Expense.fromJson(Map<String, dynamic> json) {
-    return Expense(
-      id: json['id'],
-      amount: json['amount'].toDouble(),
-      description: json['description'],
-      purpose: json['purpose'],
-      date: DateTime.parse(json['date']),
-    );
+    try {
+      final id = json['id'] as String? ?? '';
+      final amount = (json['amount'] is num)
+          ? (json['amount'] as num).toDouble()
+          : double.tryParse(json['amount'].toString()) ?? 0.0;
+      final description = json['description'] as String? ?? '';
+      final purpose = json['purpose'] as String? ?? '';
+      final dateStr =
+          json['date'] as String? ?? DateTime.now().toIso8601String();
+
+      return Expense(
+        id: id,
+        amount: amount,
+        description: description,
+        purpose: purpose,
+        date: DateTime.tryParse(dateStr) ?? DateTime.now(),
+      );
+    } catch (e) {
+      print('Error parsing Expense from JSON: $e');
+      print('JSON data: $json');
+      rethrow;
+    }
   }
 }

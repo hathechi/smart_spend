@@ -2,20 +2,57 @@
   "app": {
     "title": "Smart Spend"
   },
+  "navigation": {
+    "add": "Add",
+    "list": "List",
+    "charts": "Charts",
+    "settings": "Settings"
+  },
   "tabs": {
-    "add_expense": "Add Expense",
-    "view_expenses": "View Expenses",
+    "add": "Add",
+    "list": "List",
+    "charts": "Charts",
     "settings": "Settings"
   },
   "expense": {
+    "title": "Expenses",
+    "purpose": "Purpose",
     "amount": "Amount",
-    "purpose": "Expense Purpose",
+    "date": "Date",
+    "description": "Description",
     "add": "Add Expense",
-    "total": "Total Expenses",
-    "empty": "No expenses",
-    "time": "Time",
+    "edit": "Edit Expense",
     "delete": "Delete Expense",
-    "recent": "Recent Expense"
+    "list": "List",
+    "charts": "Charts",
+    "total": "Total Expenses",
+    "empty": "No expenses yet",
+    "category": "Category",
+    "daily": "Daily",
+    "no_data": "No data to display",
+    "add_new": "Add new expense",
+    "delete_confirm": "Are you sure you want to delete this expense?",
+    "delete_success": "Expense deleted successfully",
+    "delete_error": "Error occurred while deleting expense",
+    "analyze": "Analyze",
+    "analyzing": "Analyzing...",
+    "analyze_success": "Expense report sent successfully",
+    "analyze_error": "Error occurred while analyzing expenses",
+    "filter": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "this_week": "This Week",
+      "last_week": "Last Week",
+      "this_month": "This Month",
+      "last_month": "Last Month",
+      "all": "All"
+    },
+    "chart": {
+      "by_category": "Expenses by Category",
+      "by_date": "Expenses by Date",
+      "category_details": "Category Details",
+      "no_data": "No expense data available"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -27,16 +64,47 @@
     },
     "language": {
       "title": "Language",
-      "subtitle": "Choose display language",
-      "vi": "Vietnamese",
-      "en": "English"
+      "subtitle": "Change app language",
+      "en": "English",
+      "vi": "Vietnamese"
+    },
+    "theme": "Theme",
+    "notifications": {
+      "title": "Notifications",
+      "subtitle": "Manage notifications",
+      "daily_report": "Daily report",
+      "weekly_report": "Weekly report",
+      "monthly_report": "Monthly report"
+    },
+    "about": {
+      "title": "About",
+      "subtitle": "App information",
+      "version": "Version",
+      "developer": "Developer",
+      "contact": "Contact"
     }
   },
   "messages": {
     "fill_info": "Please fill in all information",
-    "add_success": "Added expense {0}",
+    "add_success": "Expense added successfully",
     "add_error": "Could not add expense",
-    "delete_success": "Expense deleted",
-    "delete_error": "Could not delete expense"
+    "delete_success": "Expense deleted successfully",
+    "delete_error": "Could not delete expense",
+    "no_expenses": "No expenses to analyze",
+    "analyze": "Analyze",
+    "analyzing": "Analyzing...",
+    "analysis_success": "Expense analysis completed",
+    "analysis_error": "Could not analyze expenses",
+    "report_sent": "Report sent successfully",
+    "report_error": "Could not send report"
+  },
+  "filters": {
+    "all": "All",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "this_week": "This Week",
+    "last_week": "Last Week",
+    "this_month": "This Month",
+    "last_month": "Last Month"
   }
 }
