@@ -1,0 +1,42 @@
+{
+  "app": {
+    "title": "Smart Spend"
+  },
+  "tabs": {
+    "add_expense": "Nhập chi tiêu",
+    "view_expenses": "Xem chi tiêu",
+    "settings": "Cài đặt"
+  },
+  "expense": {
+    "amount": "Số tiền",
+    "purpose": "Mục đích chi tiêu",
+    "add": "Thêm chi tiêu",
+    "total": "Tổng chi tiêu",
+    "empty": "Không có chi tiêu nào",
+    "time": "Thời gian",
+    "delete": "Xóa chi tiêu",
+    "recent": "Chi tiêu gần nhất"
+  },
+  "settings": {
+    "title": "Cài đặt",
+    "appearance": {
+      "title": "Giao diện",
+      "subtitle": "Tùy chỉnh giao diện ứng dụng",
+      "use_system": "Sử dụng theme hệ thống",
+      "dark_mode": "Chế độ tối"
+    },
+    "language": {
+      "title": "Ngôn ngữ",
+      "subtitle": "Chọn ngôn ngữ hiển thị",
+      "vi": "Tiếng Việt",
+      "en": "Tiếng Anh"
+    }
+  },
+  "messages": {
+    "fill_info": "Vui lòng điền đầy đủ thông tin",
+    "add_success": "Đã thêm chi tiêu {0}",
+    "add_error": "Không thể thêm chi tiêu",
+    "delete_success": "Đã xóa chi tiêu",
+    "delete_error": "Không thể xóa chi tiêu"
+  }
+}

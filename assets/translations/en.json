@@ -1,0 +1,42 @@
+{
+  "app": {
+    "title": "Smart Spend"
+  },
+  "tabs": {
+    "add_expense": "Add Expense",
+    "view_expenses": "View Expenses",
+    "settings": "Settings"
+  },
+  "expense": {
+    "amount": "Amount",
+    "purpose": "Expense Purpose",
+    "add": "Add Expense",
+    "total": "Total Expenses",
+    "empty": "No expenses",
+    "time": "Time",
+    "delete": "Delete Expense",
+    "recent": "Recent Expense"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": {
+      "title": "Appearance",
+      "subtitle": "Customize app appearance",
+      "use_system": "Use system theme",
+      "dark_mode": "Dark mode"
+    },
+    "language": {
+      "title": "Language",
+      "subtitle": "Choose display language",
+      "vi": "Vietnamese",
+      "en": "English"
+    }
+  },
+  "messages": {
+    "fill_info": "Please fill in all information",
+    "add_success": "Added expense {0}",
+    "add_error": "Could not add expense",
+    "delete_success": "Expense deleted",
+    "delete_error": "Could not delete expense"
+  }
+}
