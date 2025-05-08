@@ -91,4 +91,15 @@ $sanitizedAnalysis
           '❌ Oops! Có chút trục trặc khi phân tích chi tiêu của bạn: $e');
     }
   }
+
+  Future<String> generateReminderMessage(String prompt) async {
+    try {
+      final content = [Content.text(prompt)];
+      final response = await _model.generateContent(content);
+      return response.text ?? "Đừng quên ghi chú chi tiêu nhé!";
+    } catch (e) {
+      print('Error in AI reminder: $e');
+      return "Đừng quên ghi chú chi tiêu nhé!";
+    }
+  }
 }
