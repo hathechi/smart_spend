@@ -95,7 +95,7 @@ Dự án được phát hành dưới giấy phép MIT. Xem file [LICENSE](LICEN
 
 ## 👨‍💻 Tác giả
 
-- **AD Nguyen** - [GitHub](https://github.com/adnguyen)
+- **hathechi** - [GitHub](https://github.com/hathechi)
 
 ## 🙏 Cảm ơn
 
@@ -104,5 +104,5 @@ Cảm ơn bạn đã quan tâm đến Smart Spend! Hy vọng ứng dụng sẽ g
 ---
 
 <div align="center">
-  Made with ❤️ by AD Nguyen
+  Made with ❤️ by hathechi
 </div>
