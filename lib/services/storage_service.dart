@@ -1,107 +1,76 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:smart_spend/models/expense.dart';
+import '../models/expense.dart';
+import 'database_helper.dart';
+import 'package:http/http.dart' as http;
+import 'package:smart_spend/services/settings_service.dart';
 
 class StorageService {
-  static const String _expensesKey = 'expenses';
+  final DatabaseHelper _dbHelper = DatabaseHelper();
+  static const String _settingsKey = 'settings';
 
+  // Expense operations
   Future<void> saveExpense(Expense expense) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final expenses = await getExpenses();
-      expenses.add(expense);
-
-      final expensesJson = expenses.map((e) => e.toJson()).toList();
-      print('Debug: Saving expenses - ${jsonEncode(expensesJson)}');
-
-      final success =
-          await prefs.setString(_expensesKey, jsonEncode(expensesJson));
-      if (!success) {
-        throw Exception('Failed to save expenses to SharedPreferences');
-      }
-      print('Debug: Expenses saved successfully');
-    } catch (e) {
-      print('Debug: Error in saveExpense - $e');
-      rethrow;
-    }
+    await _dbHelper.insertExpense(expense);
   }
 
   Future<List<Expense>> getExpenses() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final expensesJson = prefs.getString(_expensesKey);
+    return await _dbHelper.getExpenses();
+  }
 
-      if (expensesJson == null) {
-        print('Debug: No expenses found in storage');
-        return [];
-      }
+  Future<List<Expense>> getExpensesByDateRange(
+      DateTime start, DateTime end) async {
+    return await _dbHelper.getExpensesByDateRange(start, end);
+  }
 
-      print('Debug: Raw expenses data - $expensesJson');
+  Future<void> updateExpense(Expense expense) async {
+    await _dbHelper.updateExpense(expense);
+  }
 
-      dynamic decoded;
-      try {
-        decoded = jsonDecode(expensesJson);
-        print('Debug: Decoded JSON type - ${decoded.runtimeType}');
-      } catch (e) {
-        print('Debug: Error decoding JSON - $e');
-        return [];
-      }
+  Future<void> deleteExpense(int id) async {
+    await _dbHelper.deleteExpense(id);
+  }
 
-      if (decoded is! List) {
-        print(
-            'Debug: Invalid data format - expected List but got ${decoded.runtimeType}');
-        return [];
-      }
+  // Settings operations (still using SharedPreferences)
+  Future<void> saveSettings(Map<String, dynamic> settings) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_settingsKey, settings.toString());
+  }
 
-      final List<Expense> expenses = [];
-      for (var item in decoded) {
-        try {
-          if (item is! Map<String, dynamic>) {
-            print('Debug: Invalid expense item type - ${item.runtimeType}');
-            print('Debug: Invalid expense item - $item');
-            continue;
-          }
-          final expense = Expense.fromJson(item);
-          expenses.add(expense);
-        } catch (e) {
-          print('Debug: Error parsing expense item - $e');
-          print('Debug: Problematic item - $item');
-          continue;
-        }
-      }
+  Future<Map<String, dynamic>> getSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final settingsStr = prefs.getString(_settingsKey);
+    if (settingsStr == null) return {};
+    // Parse settings string to Map
+    return {}; // TODO: Implement proper parsing
+  }
 
-      print('Debug: Successfully loaded ${expenses.length} expenses');
-      return expenses;
-    } catch (e) {
-      print('Debug: Error in getExpenses - $e');
-      return [];
+  // Migration helper
+  Future<void> migrateFromSharedPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    final expensesJson = prefs.getString('expenses');
+    if (expensesJson != null) {
+      // TODO: Implement migration from JSON to SQLite
+      // This will be implemented in the next step
     }
   }
 
-  Future<List<Expense>> getExpensesByDate(DateTime date) async {
+  Future<void> sendExpensesToWebhook(SettingsService settingsService) async {
+    final webhookUrl = settingsService.getWebhookUrl();
+    if (webhookUrl == null || webhookUrl.isEmpty) {
+      throw Exception('Webhook URL is not set');
+    }
     final expenses = await getExpenses();
-    return expenses.where((expense) {
-      return expense.date.year == date.year &&
-          expense.date.month == date.month &&
-          expense.date.day == date.day;
-    }).toList();
-  }
+    final data = expenses.map((e) => e.toMap()).toList();
+    final response = await http.post(
+      Uri.parse(webhookUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'expenses': data}),
+    );
 
-  Future<void> deleteExpense(String id) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final expenses = await getExpenses();
-      expenses.removeWhere((expense) => expense.id == id);
-
-      final expensesJson = expenses.map((e) => e.toJson()).toList();
-      final success =
-          await prefs.setString(_expensesKey, jsonEncode(expensesJson));
-      if (!success) {
-        throw Exception('Failed to delete expense from SharedPreferences');
-      }
-    } catch (e) {
-      print('Debug: Error in deleteExpense - $e');
-      rethrow;
+    print(jsonEncode({'expenses': data}));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Failed to send data to webhook: \\n${response.body}');
     }
   }
 }

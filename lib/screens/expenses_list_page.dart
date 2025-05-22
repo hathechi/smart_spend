@@ -6,7 +6,8 @@ import 'package:smart_spend/services/storage_service.dart';
 import 'package:smart_spend/services/ai_analysis_service.dart';
 import 'package:smart_spend/services/telegram_service.dart';
 import 'package:smart_spend/theme/app_theme.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:smart_spend/services/settings_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ExpensesListPage extends StatefulWidget {
   const ExpensesListPage({super.key});
@@ -17,18 +18,15 @@ class ExpensesListPage extends StatefulWidget {
 
 class _ExpensesListPageState extends State<ExpensesListPage> {
   final StorageService _storageService = StorageService();
-  final AIAnalysisService _aiAnalysisService = AIAnalysisService(
-    StorageService(),
-    TelegramService(
-      botToken: dotenv.env['TELEGRAM_BOT_TOKEN'] ?? '',
-      chatId: dotenv.env['TELEGRAM_CHAT_ID'] ?? '',
-    ),
-  );
+  late final AIAnalysisService _aiAnalysisService;
+  late SettingsService _settingsService;
   final _currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: '₫');
   List<Expense> _expenses = [];
   List<Expense> _filteredExpenses = [];
   bool _isAnalyzing = false;
+  bool _isSendingWebhook = false;
   String _selectedFilter = 'today';
+  bool _initialized = false;
 
   final Map<String, String> _dateFilters = {
     'all': 'filters.all'.tr(),
@@ -43,7 +41,22 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
   @override
   void initState() {
     super.initState();
-    _loadExpenses();
+    _initializeServices();
+  }
+
+  Future<void> _initializeServices() async {
+    final prefs = await SharedPreferences.getInstance();
+    _settingsService = SettingsService(prefs);
+    final telegramService = TelegramService(_settingsService);
+    _aiAnalysisService = AIAnalysisService(
+      _storageService,
+      telegramService,
+      _settingsService,
+    );
+    await _loadExpenses();
+    setState(() {
+      _initialized = true;
+    });
   }
 
   Future<void> _loadExpenses() async {
@@ -103,18 +116,20 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
   }
 
   Future<void> _deleteExpense(Expense expense) async {
-    await _storageService.deleteExpense(expense.id);
-    await _loadExpenses();
+    if (expense.id != null) {
+      await _storageService.deleteExpense(expense.id!);
+      await _loadExpenses();
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('messages.delete_success'.tr()),
-          backgroundColor: AppTheme.primaryColor,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('messages.delete_success'.tr()),
+            backgroundColor: AppTheme.primaryColor,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
     }
   }
 
@@ -167,8 +182,35 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
     }
   }
 
+  Future<void> _sendExpensesToWebhook() async {
+    setState(() => _isSendingWebhook = true);
+    try {
+      await _storageService.sendExpensesToWebhook(_settingsService);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Đã gửi dữ liệu lên webhook thành công!'),
+              backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Gửi dữ liệu thất bại: \\n$e'),
+              backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSendingWebhook = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (!_initialized) {
+      return const Center(child: CircularProgressIndicator());
+    }
     final theme = Theme.of(context);
     final totalAmount = _filteredExpenses.fold<double>(
       0,
@@ -214,7 +256,19 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Gửi dữ liệu lên Google Sheets',
+                  onPressed: _isSendingWebhook ? null : _sendExpensesToWebhook,
+                  icon: _isSendingWebhook
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.cloud_upload, color: Colors.orange),
+                ),
+                const SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: _isAnalyzing ? null : _analyzeExpenses,
                   style: ElevatedButton.styleFrom(
@@ -310,7 +364,7 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
                       itemBuilder: (context, index) {
                         final expense = _filteredExpenses[index];
                         return Dismissible(
-                          key: Key(expense.id),
+                          key: Key(expense.id.toString()),
                           direction: DismissDirection.endToStart,
                           background: Container(
                             alignment: Alignment.centerRight,

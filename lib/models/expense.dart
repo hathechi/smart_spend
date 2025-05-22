@@ -1,52 +1,60 @@
 import 'package:flutter/material.dart';
+import 'package:sqflite/sqflite.dart';
 
 class Expense {
-  final String id;
+  final int? id;
   final double amount;
-  final String description;
   final String purpose;
+  final String? description;
   final DateTime date;
+  final DateTime createdAt;
 
   Expense({
-    required this.id,
+    this.id,
     required this.amount,
-    required this.description,
     required this.purpose,
+    this.description,
     required this.date,
-  });
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toMap() {
     return {
       'id': id,
       'amount': amount,
-      'description': description,
       'purpose': purpose,
+      'description': description,
       'date': date.toIso8601String(),
+      'created_at': createdAt.toIso8601String(),
     };
   }
 
-  factory Expense.fromJson(Map<String, dynamic> json) {
-    try {
-      final id = json['id'] as String? ?? '';
-      final amount = (json['amount'] is num)
-          ? (json['amount'] as num).toDouble()
-          : double.tryParse(json['amount'].toString()) ?? 0.0;
-      final description = json['description'] as String? ?? '';
-      final purpose = json['purpose'] as String? ?? '';
-      final dateStr =
-          json['date'] as String? ?? DateTime.now().toIso8601String();
+  factory Expense.fromMap(Map<String, dynamic> map) {
+    return Expense(
+      id: map['id'] as int?,
+      amount: map['amount'] as double,
+      purpose: map['purpose'] as String,
+      description: map['description'] as String?,
+      date: DateTime.parse(map['date'] as String),
+      createdAt: DateTime.parse(map['created_at'] as String),
+    );
+  }
 
-      return Expense(
-        id: id,
-        amount: amount,
-        description: description,
-        purpose: purpose,
-        date: DateTime.tryParse(dateStr) ?? DateTime.now(),
-      );
-    } catch (e) {
-      print('Error parsing Expense from JSON: $e');
-      print('JSON data: $json');
-      rethrow;
-    }
+  Expense copyWith({
+    int? id,
+    double? amount,
+    String? purpose,
+    String? description,
+    DateTime? date,
+    DateTime? createdAt,
+  }) {
+    return Expense(
+      id: id ?? this.id,
+      amount: amount ?? this.amount,
+      purpose: purpose ?? this.purpose,
+      description: description ?? this.description,
+      date: date ?? this.date,
+      createdAt: createdAt ?? this.createdAt,
+    );
   }
 }

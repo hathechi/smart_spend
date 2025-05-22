@@ -82,6 +82,36 @@
       "version": "Version",
       "developer": "Developer",
       "contact": "Contact"
+    },
+    "api": {
+      "title": "API Configuration",
+      "subtitle": "Configure external APIs and services",
+      "save": "Save Configuration",
+      "telegram": {
+        "title": "Telegram Configuration",
+        "subtitle": "Configure Telegram bot for notifications",
+        "chat_id": "Chat ID",
+        "chat_id_hint": "Enter Telegram Chat ID",
+        "chat_id_required": "Please enter Chat ID",
+        "bot_token": "Bot Token",
+        "bot_token_hint": "Enter Telegram Bot Token",
+        "bot_token_required": "Please enter Bot Token",
+        "test": "Test Connection",
+        "testing": "Testing...",
+        "test_success": "Connection successful! Check your Telegram messages.",
+        "test_error": "Connection failed. Please check your configuration.",
+        "save_success": "Telegram configuration saved",
+        "save_error": "Could not save Telegram configuration"
+      },
+      "openai": {
+        "title": "OpenAI API",
+        "subtitle": "Configure OpenAI API key",
+        "api_key": "API Key",
+        "api_key_hint": "Enter OpenAI API Key",
+        "api_key_required": "Please enter API Key",
+        "save_success": "API key saved",
+        "save_error": "Could not save API key"
+      }
     }
   },
   "messages": {
@@ -106,5 +136,27 @@
     "last_week": "Last Week",
     "this_month": "This Month",
     "last_month": "Last Month"
+  },
+  "reminder": {
+    "title": "Spending Reminder",
+    "start_date": "Start date",
+    "choose_times": "Choose specific times",
+    "repeat_every": "Repeat every",
+    "hour": "hour",
+    "done": "Done",
+    "reminder_times": "Reminder times",
+    "add_time": "Add time"
+  },
+  "chart": {
+    "no_data": "No expense data for this month",
+    "this_month": "{month}",
+    "by_category": "Expenses by Category",
+    "by_date": "Expenses by Date",
+    "by_type": "Chart type",
+    "pie_chart": "Pie chart",
+    "bar_chart": "Bar chart",
+    "line_chart": "Line chart",
+    "heatmap": "Heatmap",
+    "select_chart_type": "Select a chart type to visualize your expenses by day, week, month, or category."
   }
 }

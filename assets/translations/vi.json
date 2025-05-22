@@ -51,7 +51,8 @@
       "by_category": "Chi tiêu theo danh mục",
       "by_date": "Chi tiêu theo ngày",
       "category_details": "Chi tiết theo danh mục",
-      "no_data": "Chưa có dữ liệu chi tiêu"
+      "no_data": "Không có dữ liệu chi tiêu trong tháng này",
+      "this_month": "Tháng {month}"
     }
   },
   "settings": {
@@ -82,6 +83,36 @@
       "version": "Phiên bản",
       "developer": "Nhà phát triển",
       "contact": "Liên hệ"
+    },
+    "api": {
+      "title": "Cấu hình API",
+      "subtitle": "Cấu hình các API và dịch vụ bên ngoài",
+      "save": "Lưu cấu hình",
+      "telegram": {
+        "title": "Cấu hình Telegram",
+        "subtitle": "Cấu hình bot Telegram để nhận thông báo",
+        "chat_id": "Chat ID",
+        "chat_id_hint": "Nhập Telegram Chat ID",
+        "chat_id_required": "Vui lòng nhập Chat ID",
+        "bot_token": "Bot Token",
+        "bot_token_hint": "Nhập Telegram Bot Token",
+        "bot_token_required": "Vui lòng nhập Bot Token",
+        "test": "Kiểm tra kết nối",
+        "testing": "Đang kiểm tra...",
+        "test_success": "Kết nối thành công! Kiểm tra tin nhắn Telegram của bạn.",
+        "test_error": "Kết nối thất bại. Vui lòng kiểm tra lại cấu hình.",
+        "save_success": "Đã lưu cấu hình Telegram",
+        "save_error": "Không thể lưu cấu hình Telegram"
+      },
+      "openai": {
+        "title": "OpenAI API",
+        "subtitle": "Cấu hình API key cho OpenAI",
+        "api_key": "API Key",
+        "api_key_hint": "Nhập OpenAI API Key",
+        "api_key_required": "Vui lòng nhập API Key",
+        "save_success": "Đã lưu API key",
+        "save_error": "Không thể lưu API key"
+      }
     }
   },
   "messages": {
@@ -106,5 +137,27 @@
     "last_week": "Tuần trước",
     "this_month": "Tháng này",
     "last_month": "Tháng trước"
+  },
+  "reminder": {
+    "title": "Nhắc nhở chi tiêu",
+    "start_date": "Ngày bắt đầu",
+    "choose_times": "Chọn khung giờ cụ thể",
+    "repeat_every": "Lặp lại mỗi",
+    "hour": "giờ",
+    "done": "Xong",
+    "reminder_times": "Các khung giờ nhắc nhở",
+    "add_time": "Thêm khung giờ"
+  },
+  "chart": {
+    "no_data": "Không có dữ liệu chi tiêu trong tháng này",
+    "this_month": "{month}",
+    "by_category": "Chi tiêu theo danh mục",
+    "by_date": "Chi tiêu theo ngày",
+    "by_type": "Chọn loại biểu đồ",
+    "pie_chart": "Biểu đồ tròn",
+    "bar_chart": "Biểu đồ cột",
+    "line_chart": "Biểu đồ đường",
+    "heatmap": "Biểu đồ nhiệt",
+    "select_chart_type": "Chọn loại biểu đồ để xem trực quan hóa chi tiêu theo ngày, tuần, tháng hoặc danh mục."
   }
 }

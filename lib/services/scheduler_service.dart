@@ -1,11 +1,18 @@
 import 'dart:async';
 import 'package:smart_spend/services/ai_analysis_service.dart';
+import 'package:smart_spend/services/storage_service.dart';
+import 'package:smart_spend/services/settings_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SchedulerService {
   final AIAnalysisService _aiAnalysisService;
+  final StorageService _storageService = StorageService();
+  late final SettingsService _settingsService;
   Timer? _timer;
 
-  SchedulerService(this._aiAnalysisService);
+  SchedulerService(this._aiAnalysisService, SharedPreferences prefs) {
+    _settingsService = SettingsService(prefs);
+  }
 
   void startScheduler() {
     // Tính thời gian đến 12h đêm tiếp theo
@@ -25,6 +32,11 @@ class SchedulerService {
 
   Future<void> _runAnalysis() async {
     await _aiAnalysisService.analyzeAndSendReport();
+    try {
+      await _storageService.sendExpensesToWebhook(_settingsService);
+    } catch (e) {
+      print('Error sending expenses to webhook: $e');
+    }
   }
 
   void dispose() {

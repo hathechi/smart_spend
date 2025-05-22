@@ -203,6 +203,7 @@ Yêu cầu:
 - Sử dụng emoji
 - Không quá trang trọng
 - Không cần giải thích dài dòng
+- Không trùng lặp với lần trước đó
 
 Ví dụ:
 "Hey! Đã đến giờ ghi chú chi tiêu rồi nè! 💰 Đừng để tiền bay mất nhé! 😉"

@@ -4,39 +4,28 @@ import 'package:smart_spend/models/expense.dart';
 import 'package:smart_spend/services/storage_service.dart';
 import 'package:smart_spend/services/telegram_service.dart';
 import 'package:intl/intl.dart';
+import 'package:smart_spend/services/settings_service.dart';
 
 class AIAnalysisService {
   final StorageService _storageService;
   final TelegramService _telegramService;
+  final SettingsService _settingsService;
   final GenerativeModel _model;
   final _currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: '₫');
 
-  AIAnalysisService(this._storageService, this._telegramService)
-      : _model = GenerativeModel(
+  AIAnalysisService(
+    this._storageService,
+    this._telegramService,
+    this._settingsService,
+  ) : _model = GenerativeModel(
           model: 'gemini-2.0-flash',
-          apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
+          apiKey: _settingsService.getOpenAiApiKey() ??
+              dotenv.env['GEMINI_API_KEY'] ??
+              '',
         );
 
   String _sanitizeText(String text) {
-    // Chỉ loại bỏ các ký tự có thể gây lỗi, giữ lại emoji và các ký tự an toàn
-    return text
-        .replaceAll('*', '')
-        .replaceAll('_', '')
-        .replaceAll('[', '')
-        .replaceAll(']', '')
-        .replaceAll('(', '')
-        .replaceAll(')', '')
-        .replaceAll('`', '')
-        .replaceAll('~', '')
-        .replaceAll('>', '')
-        .replaceAll('<', '')
-        .replaceAll('&', 'và')
-        .replaceAll('#', '')
-        .replaceAll('+', '')
-        .replaceAll('=', '')
-        .replaceAll('|', '')
-        .replaceAll('{', '')
-        .replaceAll('}', '');
+    return text.replaceAll(RegExp(r'[^\w\s]'), '');
   }
 
   Future<void> analyzeAndSendReport() async {
@@ -48,21 +37,60 @@ class AIAnalysisService {
         return;
       }
 
-      // Làm sạch dữ liệu chi tiêu
-      final sanitizedExpenses = expenses
-          .map((e) =>
-              '💰 ${_currencyFormat.format(e.amount)} cho ${_sanitizeText(e.purpose)} vào ${DateFormat('dd/MM/yyyy').format(e.date)}')
-          .join('\n');
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final thisMonth = DateTime(now.year, now.month);
+
+      // Lọc chi tiêu hôm nay
+      final todayExpenses = expenses.where((e) {
+        final d = DateTime(e.date.year, e.date.month, e.date.day);
+        return d == today;
+      }).toList();
+
+      // Lọc chi tiêu tháng này
+      final monthExpenses = expenses.where((e) {
+        return e.date.year == now.year && e.date.month == now.month;
+      }).toList();
+
+      // Làm sạch dữ liệu chi tiêu hôm nay
+      final sanitizedTodayExpenses = todayExpenses.isNotEmpty
+          ? todayExpenses
+              .map((e) =>
+                  '💰 ${_currencyFormat.format(e.amount)} cho ${_sanitizeText(e.purpose)} vào ${DateFormat('HH:mm').format(e.date)}')
+              .join('\n')
+          : 'Không có chi tiêu nào trong ngày.';
+
+      // Làm sạch dữ liệu chi tiêu tháng này
+      final sanitizedMonthExpenses = monthExpenses.isNotEmpty
+          ? monthExpenses
+              .map((e) =>
+                  '💰 ${_currencyFormat.format(e.amount)} cho ${_sanitizeText(e.purpose)} vào ${DateFormat('dd/MM').format(e.date)}')
+              .join('\n')
+          : 'Không có chi tiêu nào trong tháng.';
 
       final prompt = '''
-Hey bạn! Mình sẽ phân tích chi tiêu của bạn một cách ngắn gọn và vui vẻ nhé! 😊
+Hey bạn! Đây là báo cáo chi tiêu cuối ngày của bạn. Hãy phân tích thật ngắn gọn, vui vẻ và dùng emoji nhé! 😊
 
-$sanitizedExpenses
+---
+
+📅 Báo cáo chi tiêu NGÀY ${DateFormat('dd/MM/yyyy').format(today)}:
+$sanitizedTodayExpenses
 
 Hãy cho mình biết:
-1. 💰 Tổng chi tiêu và khoản chi lớn nhất
-2. 🎯 Danh mục chi nhiều nhất
-3. 💡 Một gợi ý tiết kiệm đơn giản
+1. 💰 Tổng chi tiêu hôm nay và khoản chi lớn nhất hôm nay
+2. 🎯 Danh mục chi nhiều nhất hôm nay
+3. 💡 Một gợi ý tiết kiệm đơn giản cho ngày hôm nay
+
+---
+
+📆 Báo cáo TỔNG KẾT THÁNG ${DateFormat('MM/yyyy').format(thisMonth)} (tính đến hết hôm nay):
+$sanitizedMonthExpenses
+
+Hãy cho mình biết:
+1. 💰 Tổng chi tiêu tháng này và khoản chi lớn nhất tháng
+2. 🎯 Danh mục chi nhiều nhất tháng
+3. 📈 So sánh chi tiêu hôm nay với trung bình ngày trong tháng
+4. 💡 Một gợi ý tiết kiệm cho tháng này
 
 Trả lời ngắn gọn, vui vẻ và sử dụng emoji nhé! Không cần phân tích quá chi tiết đâu 😉
 ''';
@@ -72,13 +100,11 @@ Trả lời ngắn gọn, vui vẻ và sử dụng emoji nhé! Không cần phâ
       final analysis = response.text;
 
       if (analysis != null) {
-        // Làm sạch kết quả phân tích trước khi gửi
-        final sanitizedAnalysis = _sanitizeText(analysis);
-
+        // Gửi nguyên văn kết quả phân tích từ AI, không sanitize để giữ dấu tiếng Việt, emoji, định dạng
         final formattedMessage = '''
-📊 <b>Báo cáo chi tiêu thân thiện</b>
+📊 <b>Báo cáo chi tiêu cuối ngày</b>
 
-$sanitizedAnalysis
+$analysis
 
 ⏰ <i>Giờ gửi: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}</i>
 ''';

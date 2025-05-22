@@ -5,18 +5,22 @@ import 'package:smart_spend/services/ai_analysis_service.dart';
 import 'package:smart_spend/services/storage_service.dart';
 import 'package:smart_spend/services/telegram_service.dart';
 import 'package:smart_spend/services/notification_service.dart';
+import 'package:smart_spend/services/settings_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final settingsService = SettingsService(prefs);
       final storageService = StorageService();
-      final telegramService = TelegramService(
-        botToken: dotenv.env['TELEGRAM_BOT_TOKEN'] ?? '',
-        chatId: dotenv.env['TELEGRAM_CHAT_ID'] ?? '',
+      final telegramService = TelegramService(settingsService);
+      final aiAnalysisService = AIAnalysisService(
+        storageService,
+        telegramService,
+        settingsService,
       );
-      final aiAnalysisService =
-          AIAnalysisService(storageService, telegramService);
 
       await aiAnalysisService.analyzeAndSendReport();
       return true;

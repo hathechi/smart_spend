@@ -12,6 +12,8 @@ class NotificationService {
 
   Future<void> initialize() async {
     tz.initializeTimeZones();
+    // Set timezone to Asia/Bangkok (UTC+7)
+    tz.setLocalLocation(tz.getLocation('Asia/Bangkok'));
 
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -30,11 +32,14 @@ class NotificationService {
   }
 
   Future<void> scheduleDailyNotification() async {
+    final scheduledDate = _getNextMidnight();
+    print('Scheduling notification for: ${scheduledDate.toString()}');
+
     await _notifications.zonedSchedule(
       0,
       'Báo cáo chi tiêu',
       'Đang chuẩn bị gửi báo cáo chi tiêu hàng ngày',
-      _getNextMidnight(),
+      scheduledDate,
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_report_channel',
@@ -62,13 +67,16 @@ class NotificationService {
       tz.local,
       now.year,
       now.month,
-      now.day + 1,
-      0,
+      now.day,
+      0, // 00:00 (midnight)
       0,
     );
+
+    // If current time is past midnight, schedule for next day
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
+
     return scheduledDate;
   }
 }

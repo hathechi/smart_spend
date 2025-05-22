@@ -1,5 +1,5 @@
 name: smart_spend
-description: "A new Flutter project."
+description: "Smart Spend"
 publish_to: "none"
 version: 1.0.0+1
 
@@ -27,11 +27,14 @@ dependencies:
   flutter_local_notifications: ^16.3.2
   timezone: ^0.9.2
   fl_chart: ^0.71.0
+  sqflite: ^2.3.2
+  path: ^1.8.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
@@ -50,3 +53,8 @@ flutter:
           weight: 600
         - asset: assets/fonts/Inter-Bold.ttf
           weight: 700
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/icon.png"

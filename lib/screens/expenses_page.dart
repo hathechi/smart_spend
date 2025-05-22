@@ -10,6 +10,8 @@ import 'package:smart_spend/screens/settings_page.dart';
 import 'package:lottie/lottie.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_masked_text2/flutter_masked_text2.dart';
+import 'package:smart_spend/services/settings_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ExpensesPage extends StatefulWidget {
   const ExpensesPage({super.key});
@@ -20,13 +22,7 @@ class ExpensesPage extends StatefulWidget {
 
 class _ExpensesPageState extends State<ExpensesPage> {
   final StorageService _storageService = StorageService();
-  final AIAnalysisService _aiAnalysisService = AIAnalysisService(
-    StorageService(),
-    TelegramService(
-      botToken: dotenv.env['TELEGRAM_BOT_TOKEN'] ?? '',
-      chatId: dotenv.env['TELEGRAM_CHAT_ID'] ?? '',
-    ),
-  );
+  late final AIAnalysisService _aiAnalysisService;
   final _amountController = MoneyMaskedTextController(
     decimalSeparator: '',
     precision: 0,
@@ -44,7 +40,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
   @override
   void initState() {
     super.initState();
-    _loadExpenses();
+    _initializeServices();
   }
 
   @override
@@ -55,11 +51,30 @@ class _ExpensesPageState extends State<ExpensesPage> {
     super.dispose();
   }
 
+  Future<void> _initializeServices() async {
+    final prefs = await SharedPreferences.getInstance();
+    final settingsService = SettingsService(prefs);
+    final telegramService = TelegramService(settingsService);
+    _aiAnalysisService = AIAnalysisService(
+      _storageService,
+      telegramService,
+      settingsService,
+    );
+    await _loadExpenses();
+  }
+
   Future<void> _loadExpenses() async {
     final expenses = await _storageService.getExpenses();
+    final today = DateTime.now();
+    final todayExpenses = expenses
+        .where((e) =>
+            e.date.year == today.year &&
+            e.date.month == today.month &&
+            e.date.day == today.day)
+        .toList();
     setState(() {
-      _expenses = expenses;
-      _totalExpenses = expenses.fold(0, (sum, e) => sum + e.amount);
+      _expenses = todayExpenses;
+      _totalExpenses = todayExpenses.fold(0, (sum, e) => sum + e.amount);
     });
   }
 
@@ -68,13 +83,16 @@ class _ExpensesPageState extends State<ExpensesPage> {
       return;
     }
 
-    final amount = _amountController.numberValue;
-    if (amount <= 0) {
+    final amountText = _amountController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (amountText.isEmpty) {
+      return;
+    }
+    final amount = double.tryParse(amountText);
+    if (amount == null || amount <= 0) {
       return;
     }
 
     final expense = Expense(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
       amount: amount,
       purpose: _purposeController.text,
       date: DateTime.now(),
@@ -83,7 +101,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
     await _storageService.saveExpense(expense);
     FocusScope.of(context).unfocus();
-    _amountController.clear();
+    _amountController.updateValue(0);
     _purposeController.clear();
     await _loadExpenses();
 
@@ -100,18 +118,20 @@ class _ExpensesPageState extends State<ExpensesPage> {
   }
 
   Future<void> _deleteExpense(Expense expense) async {
-    await _storageService.deleteExpense(expense.id);
-    await _loadExpenses();
+    if (expense.id != null) {
+      await _storageService.deleteExpense(expense.id!);
+      await _loadExpenses();
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('messages.delete_success'.tr()),
-          backgroundColor: AppTheme.primaryColor,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('messages.delete_success'.tr()),
+            backgroundColor: AppTheme.primaryColor,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
     }
   }
 
@@ -344,7 +364,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   itemBuilder: (context, index) {
                     final expense = _expenses[index];
                     return Dismissible(
-                      key: Key(expense.id),
+                      key: Key(expense.id.toString()),
                       direction: DismissDirection.endToStart,
                       background: Container(
                         alignment: Alignment.centerRight,

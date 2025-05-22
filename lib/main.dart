@@ -9,6 +9,8 @@ import 'package:smart_spend/theme/app_theme.dart';
 import 'package:smart_spend/services/background_service.dart';
 import 'package:smart_spend/services/notification_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'services/migration_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,7 +31,9 @@ void main() async {
     ),
   );
 
-  final settingsService = SettingsService();
+  // Khởi tạo SharedPreferences và SettingsService
+  final prefs = await SharedPreferences.getInstance();
+  final settingsService = SettingsService(prefs);
   await settingsService.initialize();
 
   // Khởi tạo notifications trước
@@ -49,12 +53,13 @@ void main() async {
   );
   await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
+  // Perform migration
+  final migrationService = MigrationService();
+  await migrationService.migrateExpenses();
+
   runApp(
     EasyLocalization(
-      supportedLocales: const [
-        Locale('vi'),
-        Locale('en'),
-      ],
+      supportedLocales: const [Locale('en'), Locale('vi')],
       path: 'assets/translations',
       fallbackLocale: const Locale('vi'),
       child: ChangeNotifierProvider.value(
