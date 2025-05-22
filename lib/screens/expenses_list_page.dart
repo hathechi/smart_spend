@@ -30,6 +30,7 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
   bool _isSendingWebhook = false;
   String _selectedFilter = 'today';
   bool _initialized = false;
+  final _listKey = GlobalKey<AnimatedListState>();
 
   final Map<String, String> _dateFilters = {
     'all': 'filters.all'.tr(),
@@ -399,6 +400,122 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
     }
   }
 
+  Future<void> _addExpenseAnimated(Expense expense) async {
+    await _storageService.saveExpense(expense);
+    // Lấy lại danh sách expenses và filter
+    final allExpenses = await _storageService.getExpenses();
+    _expenses = allExpenses;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final expenseDate =
+        DateTime(expense.date.year, expense.date.month, expense.date.day);
+    bool shouldShow = false;
+    switch (_selectedFilter) {
+      case 'today':
+        shouldShow = expenseDate.isAtSameMomentAs(today);
+        break;
+      case 'all':
+        shouldShow = true;
+        break;
+      // Có thể bổ sung các filter khác nếu cần
+      default:
+        shouldShow = true;
+    }
+    if (shouldShow) {
+      setState(() {
+        _filteredExpenses.insert(0, expense);
+        _listKey.currentState?.insertItem(0);
+      });
+    }
+  }
+
+  Future<void> _deleteExpenseAnimated(int index) async {
+    final expense = _filteredExpenses[index];
+    if (expense.id != null) {
+      await _storageService.deleteExpense(expense.id!);
+      setState(() {
+        final removed = _filteredExpenses.removeAt(index);
+        _listKey.currentState?.removeItem(
+          index,
+          (context, animation) => SlideTransition(
+            position: animation.drive(
+              Tween(
+                begin: const Offset(1, 0),
+                end: const Offset(0, 0),
+              ).chain(CurveTween(curve: Curves.easeOut)),
+            ),
+            child: FadeTransition(
+              opacity: animation,
+              child: _buildExpenseTile(removed),
+            ),
+          ),
+          duration: const Duration(milliseconds: 400),
+        );
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('messages.delete_success'.tr()),
+            backgroundColor: AppTheme.primaryColor,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildExpenseTile(Expense expense) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: Colors.grey.withOpacity(0.1),
+        ),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 8,
+        ),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(
+            Icons.receipt_long,
+            color: AppTheme.primaryColor,
+            size: 20,
+          ),
+        ),
+        title: Text(
+          expense.purpose,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          DateFormat('HH:mm').format(expense.date),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: Colors.grey,
+          ),
+        ),
+        trailing: Text(
+          _currencyFormat.format(expense.amount),
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: AppTheme.primaryColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_initialized) {
@@ -510,76 +627,39 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
                             ],
                           ),
                         )
-                      : ListView.builder(
-                          itemCount: _filteredExpenses.length,
-                          itemBuilder: (context, index) {
+                      : AnimatedList(
+                          key: _listKey,
+                          initialItemCount: _filteredExpenses.length,
+                          itemBuilder: (context, index, animation) {
                             final expense = _filteredExpenses[index];
-                            return Dismissible(
-                              key: Key(expense.id.toString()),
-                              direction: DismissDirection.endToStart,
-                              background: Container(
-                                alignment: Alignment.centerRight,
-                                padding: const EdgeInsets.only(right: 20),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: const Icon(
-                                  Icons.delete_outline,
-                                  color: Colors.red,
-                                ),
+                            return SlideTransition(
+                              position: animation.drive(
+                                Tween(
+                                  begin: const Offset(1, 0),
+                                  end: const Offset(0, 0),
+                                ).chain(CurveTween(curve: Curves.easeOut)),
                               ),
-                              onDismissed: (direction) {
-                                _deleteExpense(expense);
-                              },
-                              child: Card(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  side: BorderSide(
-                                    color: Colors.grey.withOpacity(0.1),
-                                  ),
-                                ),
-                                child: ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  leading: Container(
-                                    padding: const EdgeInsets.all(8),
+                              child: FadeTransition(
+                                opacity: animation,
+                                child: Dismissible(
+                                  key: Key(expense.id.toString()),
+                                  direction: DismissDirection.endToStart,
+                                  background: Container(
+                                    alignment: Alignment.centerRight,
+                                    padding: const EdgeInsets.only(right: 20),
                                     decoration: BoxDecoration(
-                                      color: AppTheme.primaryColor
-                                          .withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
+                                      color: Colors.red.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(16),
                                     ),
                                     child: const Icon(
-                                      Icons.receipt_long,
-                                      color: AppTheme.primaryColor,
-                                      size: 20,
+                                      Icons.delete_outline,
+                                      color: Colors.red,
                                     ),
                                   ),
-                                  title: Text(
-                                    expense.purpose,
-                                    style:
-                                        theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    DateFormat('HH:mm').format(expense.date),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  trailing: Text(
-                                    _currencyFormat.format(expense.amount),
-                                    style:
-                                        theme.textTheme.titleMedium?.copyWith(
-                                      color: AppTheme.primaryColor,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                                  onDismissed: (direction) {
+                                    _deleteExpenseAnimated(index);
+                                  },
+                                  child: _buildExpenseTile(expense),
                                 ),
                               ),
                             );
@@ -610,6 +690,13 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.orange,
                     onTap: _isSendingWebhook ? null : _sendExpensesToWebhook,
+                  ),
+                  SpeedDialChild(
+                    child: const Icon(Icons.analytics, color: Colors.green),
+                    label: 'Phân tích AI',
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.green,
+                    onTap: _isAnalyzing ? null : _analyzeExpenses,
                   ),
                 ],
               ),

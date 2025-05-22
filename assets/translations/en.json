@@ -185,5 +185,22 @@
     "success": "Data imported successfully!",
     "fail": "Import failed: {error}",
     "webhook": "Send Webhook"
+  },
+  "calendar": {
+    "title": "Expense Calendar",
+    "no_expenses": "No expenses for this day"
+  },
+  "trend": {
+    "title": "Expense Trends",
+    "week": "Week",
+    "month": "Month",
+    "year": "Year"
+  },
+  "home": {
+    "add": "Add",
+    "list": "List",
+    "calendar": "Calendar",
+    "trend": "Trends",
+    "settings": "Settings"
   }
 }

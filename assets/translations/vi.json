@@ -178,5 +178,22 @@
     "success": "Import dữ liệu thành công!",
     "fail": "Import thất bại: {error}",
     "webhook": "Gửi Webhook"
+  },
+  "calendar": {
+    "title": "Lịch chi tiêu",
+    "no_expenses": "Không có chi tiêu nào trong ngày này"
+  },
+  "trend": {
+    "title": "Xu hướng chi tiêu",
+    "week": "Tuần",
+    "month": "Tháng",
+    "year": "Năm"
+  },
+  "home": {
+    "add": "Thêm",
+    "list": "Danh sách",
+    "calendar": "Lịch",
+    "trend": "Xu hướng",
+    "settings": "Cài đặt"
   }
 }

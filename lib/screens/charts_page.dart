@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:smart_spend/models/expense.dart';
 import 'package:smart_spend/services/storage_service.dart';
 import 'package:smart_spend/theme/app_theme.dart';
+import 'package:flutter/services.dart';
 
 class ChartsPage extends StatefulWidget {
   const ChartsPage({super.key});
@@ -13,7 +14,8 @@ class ChartsPage extends StatefulWidget {
   State<ChartsPage> createState() => _ChartsPageState();
 }
 
-class _ChartsPageState extends State<ChartsPage> {
+class _ChartsPageState extends State<ChartsPage>
+    with SingleTickerProviderStateMixin {
   final StorageService _storageService = StorageService();
   final _currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: '₫');
   List<Expense> _expenses = [];
@@ -25,11 +27,20 @@ class _ChartsPageState extends State<ChartsPage> {
     'chart.line_chart',
     'chart.heatmap',
   ];
+  late TabController _tabController;
+  String _trendPeriod = 'week';
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadExpenses();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadExpenses() async {
@@ -38,7 +49,6 @@ class _ChartsPageState extends State<ChartsPage> {
     final now = DateTime.now();
     final thisMonthStart = DateTime(now.year, now.month, 1);
     final nextMonthStart = DateTime(now.year, now.month + 1, 1);
-    // Lọc chi tiêu chỉ trong tháng hiện tại
     final monthExpenses = expenses.where((e) {
       final date = DateTime(e.date.year, e.date.month, e.date.day);
       return date.isAfter(thisMonthStart.subtract(const Duration(days: 1))) &&
@@ -71,34 +81,92 @@ class _ChartsPageState extends State<ChartsPage> {
     return totals;
   }
 
+  List<FlSpot> _getTrendSpots() {
+    final now = DateTime.now();
+    final spots = <FlSpot>[];
+    double total = 0;
+    switch (_trendPeriod) {
+      case 'week':
+        for (int i = 6; i >= 0; i--) {
+          final date = now.subtract(Duration(days: i));
+          final dayExpenses = _expenses.where((e) =>
+              e.date.year == date.year &&
+              e.date.month == date.month &&
+              e.date.day == date.day);
+          total = dayExpenses.fold(0, (sum, e) => sum + e.amount);
+          spots.add(FlSpot((6 - i).toDouble(), total));
+        }
+        break;
+      case 'month':
+        for (int i = 29; i >= 0; i--) {
+          final date = now.subtract(Duration(days: i));
+          final dayExpenses = _expenses.where((e) =>
+              e.date.year == date.year &&
+              e.date.month == date.month &&
+              e.date.day == date.day);
+          total = dayExpenses.fold(0, (sum, e) => sum + e.amount);
+          spots.add(FlSpot((29 - i).toDouble(), total));
+        }
+        break;
+      case 'year':
+        for (int i = 11; i >= 0; i--) {
+          final date = DateTime(now.year, now.month - i, 1);
+          final monthExpenses = _expenses.where(
+              (e) => e.date.year == date.year && e.date.month == date.month);
+          total = monthExpenses.fold(0, (sum, e) => sum + e.amount);
+          spots.add(FlSpot((11 - i).toDouble(), total));
+        }
+        break;
+    }
+    return spots;
+  }
+
+  String _getTrendXLabel(double value) {
+    final now = DateTime.now();
+    switch (_trendPeriod) {
+      case 'week':
+        final date = now.subtract(Duration(days: 6 - value.toInt()));
+        return DateFormat('E').format(date);
+      case 'month':
+        final date = now.subtract(Duration(days: 29 - value.toInt()));
+        return DateFormat('d').format(date);
+      case 'year':
+        final date = DateTime(now.year, now.month - (11 - value.toInt()), 1);
+        return DateFormat('MMM').format(date);
+      default:
+        return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-
     if (_expenses.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.bar_chart,
-              size: 64,
-              color: Colors.grey.withOpacity(0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'chart.no_data'.tr(),
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.grey,
-                  ),
-            ),
-          ],
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.dark,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.bar_chart,
+                size: 64,
+                color: Colors.grey.withOpacity(0.5),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'chart.no_data'.tr(),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.grey,
+                    ),
+              ),
+            ],
+          ),
         ),
       );
     }
-
     final categoryTotals = _getCategoryTotals();
     final dailyTotals = _getDailyTotals();
     final totalAmount = _expenses.fold<double>(
@@ -107,12 +175,11 @@ class _ChartsPageState extends State<ChartsPage> {
     );
     final now = DateTime.now();
     final monthStr = DateFormat.yMMMM(context.locale.languageCode).format(now);
-
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+    final theme = Theme.of(context);
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Card(
               elevation: 6,
@@ -144,275 +211,488 @@ class _ChartsPageState extends State<ChartsPage> {
                         const SizedBox(width: 8),
                         Text(
                           'chart.this_month'.tr(namedArgs: {'month': monthStr}),
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: Colors.white.withOpacity(0.8),
-                                  ),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: Colors.white.withOpacity(0.8),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Text(
                       _currencyFormat.format(totalAmount),
-                      style:
-                          Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              'chart.by_type'.tr(),
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 48,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _chartTypes.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  return ChoiceChip(
-                    label: Text(_chartTypes[index].tr()),
-                    selected: _selectedChartType == index,
-                    onSelected: (selected) {
-                      setState(() {
-                        _selectedChartType = index;
-                      });
-                    },
-                  );
-                },
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+              padding: EdgeInsets.zero,
+              child: TabBar(
+                controller: _tabController,
+                indicator: const UnderlineTabIndicator(
+                  borderSide:
+                      BorderSide(width: 3, color: AppTheme.primaryColor),
+                  insets: EdgeInsets.symmetric(horizontal: 24),
+                ),
+                labelColor: AppTheme.primaryColor,
+                unselectedLabelColor:
+                    theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                labelStyle:
+                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                unselectedLabelStyle:
+                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                tabs: [
+                  Tab(text: 'chart.by_type'.tr()),
+                  Tab(text: 'trend.title'.tr()),
+                ],
               ),
             ),
-            const SizedBox(height: 24),
-            if (_selectedChartType == 0) ...[
-              Text(
-                'chart.by_category'.tr(),
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        height: 220,
-                        width: 220,
-                        child: PieChart(
-                          PieChartData(
-                            sections: _createPieChartSections(categoryTotals),
-                            centerSpaceRadius: 30,
-                            sectionsSpace: 2,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: _createPieChartLegends(categoryTotals),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ] else if (_selectedChartType == 1) ...[
-              Text(
-                'chart.by_date'.tr(),
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: SizedBox(
-                    height: 250,
-                    child: BarChart(
-                      BarChartData(
-                        barGroups: _createBarChartGroups(dailyTotals),
-                        titlesData: FlTitlesData(
-                          show: true,
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 30,
-                              getTitlesWidget: (value, meta) {
-                                if (value.toInt() >= dailyTotals.length) {
-                                  return const SizedBox();
-                                }
-                                final date =
-                                    dailyTotals.keys.elementAt(value.toInt());
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    DateFormat('dd/MM').format(date),
-                                    style: const TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 50,
-                              getTitlesWidget: (value, meta) {
-                                return Text(
-                                  _currencyFormat.format(value),
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 10,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          topTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          rightTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                        ),
-                        gridData: const FlGridData(show: true),
-                        borderData: FlBorderData(show: false),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ] else if (_selectedChartType == 2) ...[
-              Text(
-                'chart.by_date'.tr(),
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: SizedBox(
-                    height: 250,
-                    child: LineChart(
-                      LineChartData(
-                        lineBarsData: [_createLineChartBarData(dailyTotals)],
-                        titlesData: FlTitlesData(
-                          show: true,
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 30,
-                              getTitlesWidget: (value, meta) {
-                                if (value.toInt() >= dailyTotals.length) {
-                                  return const SizedBox();
-                                }
-                                final date =
-                                    dailyTotals.keys.elementAt(value.toInt());
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    DateFormat('dd/MM').format(date),
-                                    style: const TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 50,
-                              getTitlesWidget: (value, meta) {
-                                return Text(
-                                  _currencyFormat.format(value),
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 10,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          topTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          rightTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                        ),
-                        gridData: const FlGridData(show: true),
-                        borderData: FlBorderData(show: false),
-                        lineTouchData: LineTouchData(
-                          touchTooltipData: LineTouchTooltipData(
-                            getTooltipItems: (touchedSpots) {
-                              return touchedSpots.map((spot) {
-                                final date =
-                                    dailyTotals.keys.elementAt(spot.x.toInt());
-                                return LineTooltipItem(
-                                  '${DateFormat('dd/MM').format(date)}\n${_currencyFormat.format(spot.y)}',
-                                  const TextStyle(color: Colors.white),
-                                );
-                              }).toList();
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  // Tab 1: Các loại biểu đồ hiện tại
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          height: 48,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _chartTypes.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 8),
+                            itemBuilder: (context, index) {
+                              IconData icon;
+                              switch (index) {
+                                case 0:
+                                  icon = Icons.pie_chart;
+                                  break;
+                                case 1:
+                                  icon = Icons.bar_chart;
+                                  break;
+                                case 2:
+                                  icon = Icons.show_chart;
+                                  break;
+                                case 3:
+                                  icon = Icons.grid_view_rounded;
+                                  break;
+                                default:
+                                  icon = Icons.pie_chart;
+                              }
+                              return ChoiceChip(
+                                avatar: Icon(icon,
+                                    size: 18,
+                                    color: _selectedChartType == index
+                                        ? AppTheme.primaryColor
+                                        : theme.iconTheme.color
+                                            ?.withOpacity(0.5)),
+                                label: Text(_chartTypes[index].tr()),
+                                selected: _selectedChartType == index,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    _selectedChartType = index;
+                                  });
+                                },
+                                selectedColor:
+                                    AppTheme.primaryColor.withOpacity(0.15),
+                                backgroundColor: theme.cardColor,
+                                labelStyle: TextStyle(
+                                  color: _selectedChartType == index
+                                      ? AppTheme.primaryColor
+                                      : theme.textTheme.bodyMedium?.color
+                                          ?.withOpacity(0.7),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              );
                             },
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 24),
+                        if (_selectedChartType == 0) ...[
+                          Text(
+                            'chart.by_category'.tr(),
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Card(
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                children: [
+                                  SizedBox(
+                                    height: 220,
+                                    width: 220,
+                                    child: PieChart(
+                                      PieChartData(
+                                        sections: _createPieChartSections(
+                                            categoryTotals),
+                                        centerSpaceRadius: 30,
+                                        sectionsSpace: 2,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children:
+                                        _createPieChartLegends(categoryTotals),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ] else if (_selectedChartType == 1) ...[
+                          Text(
+                            'chart.by_date'.tr(),
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Card(
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: SizedBox(
+                                height: 250,
+                                child: BarChart(
+                                  BarChartData(
+                                    barGroups:
+                                        _createBarChartGroups(dailyTotals),
+                                    titlesData: FlTitlesData(
+                                      show: true,
+                                      bottomTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: true,
+                                          reservedSize: 30,
+                                          getTitlesWidget: (value, meta) {
+                                            if (value.toInt() >=
+                                                dailyTotals.length) {
+                                              return const SizedBox();
+                                            }
+                                            final date = dailyTotals.keys
+                                                .elementAt(value.toInt());
+                                            return Padding(
+                                              padding: const EdgeInsets.only(
+                                                  top: 8.0),
+                                              child: Text(
+                                                DateFormat('dd/MM')
+                                                    .format(date),
+                                                style: const TextStyle(
+                                                  color: Colors.grey,
+                                                  fontSize: 10,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      leftTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: true,
+                                          reservedSize: 50,
+                                          getTitlesWidget: (value, meta) {
+                                            return Text(
+                                              _currencyFormat.format(value),
+                                              style: const TextStyle(
+                                                color: Colors.grey,
+                                                fontSize: 10,
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      topTitles: const AxisTitles(
+                                        sideTitles:
+                                            SideTitles(showTitles: false),
+                                      ),
+                                      rightTitles: const AxisTitles(
+                                        sideTitles:
+                                            SideTitles(showTitles: false),
+                                      ),
+                                    ),
+                                    gridData: const FlGridData(show: true),
+                                    borderData: FlBorderData(show: false),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ] else if (_selectedChartType == 2) ...[
+                          Text(
+                            'chart.by_date'.tr(),
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Card(
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: SizedBox(
+                                height: 250,
+                                child: LineChart(
+                                  LineChartData(
+                                    lineBarsData: [
+                                      LineChartBarData(
+                                        spots: List.generate(
+                                          dailyTotals.length,
+                                          (index) => FlSpot(
+                                              index.toDouble(),
+                                              dailyTotals.values
+                                                  .elementAt(index)),
+                                        ),
+                                        isCurved: true,
+                                        color: AppTheme.primaryColor,
+                                        barWidth: 3,
+                                        dotData: const FlDotData(show: true),
+                                        belowBarData: BarAreaData(
+                                          show: true,
+                                          color: AppTheme.primaryColor
+                                              .withOpacity(0.2),
+                                        ),
+                                      ),
+                                    ],
+                                    titlesData: FlTitlesData(
+                                      show: true,
+                                      bottomTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: true,
+                                          reservedSize: 30,
+                                          getTitlesWidget: (value, meta) {
+                                            if (value.toInt() >=
+                                                dailyTotals.length) {
+                                              return const SizedBox();
+                                            }
+                                            final date = dailyTotals.keys
+                                                .elementAt(value.toInt());
+                                            return Padding(
+                                              padding: const EdgeInsets.only(
+                                                  top: 8.0),
+                                              child: Text(
+                                                DateFormat('dd/MM')
+                                                    .format(date),
+                                                style: const TextStyle(
+                                                  color: Colors.grey,
+                                                  fontSize: 10,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      leftTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: true,
+                                          reservedSize: 50,
+                                          getTitlesWidget: (value, meta) {
+                                            return Text(
+                                              _currencyFormat.format(value),
+                                              style: const TextStyle(
+                                                color: Colors.grey,
+                                                fontSize: 10,
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      topTitles: const AxisTitles(
+                                        sideTitles:
+                                            SideTitles(showTitles: false),
+                                      ),
+                                      rightTitles: const AxisTitles(
+                                        sideTitles:
+                                            SideTitles(showTitles: false),
+                                      ),
+                                    ),
+                                    gridData: const FlGridData(show: true),
+                                    borderData: FlBorderData(show: false),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ] else if (_selectedChartType == 3) ...[
+                          Text(
+                            'chart.heatmap'.tr(),
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Card(
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: SizedBox(
+                                height: 220,
+                                child: _buildHeatmap(dailyTotals),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ),
-              ),
-            ] else if (_selectedChartType == 3) ...[
-              Text(
-                'chart.heatmap'.tr(),
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  // Tab 2: Biểu đồ xu hướng
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            PopupMenuButton<String>(
+                              onSelected: (value) {
+                                setState(() {
+                                  _trendPeriod = value;
+                                });
+                              },
+                              itemBuilder: (context) => [
+                                PopupMenuItem(
+                                  value: 'week',
+                                  child: Text('trend.week'.tr()),
+                                ),
+                                PopupMenuItem(
+                                  value: 'month',
+                                  child: Text('trend.month'.tr()),
+                                ),
+                                PopupMenuItem(
+                                  value: 'year',
+                                  child: Text('trend.year'.tr()),
+                                ),
+                              ],
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.timeline),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _trendPeriod == 'week'
+                                        ? 'trend.week'.tr()
+                                        : _trendPeriod == 'month'
+                                            ? 'trend.month'.tr()
+                                            : 'trend.year'.tr(),
+                                  ),
+                                  const Icon(Icons.arrow_drop_down),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Expanded(
+                          child: Card(
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: LineChart(
+                                LineChartData(
+                                  gridData: const FlGridData(show: true),
+                                  titlesData: FlTitlesData(
+                                    leftTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        reservedSize: 60,
+                                        getTitlesWidget: (value, meta) {
+                                          return Text(
+                                            _currencyFormat.format(value),
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    bottomTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        getTitlesWidget: (value, meta) {
+                                          return Text(
+                                            _getTrendXLabel(value),
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    rightTitles: const AxisTitles(
+                                      sideTitles: SideTitles(showTitles: false),
+                                    ),
+                                    topTitles: const AxisTitles(
+                                      sideTitles: SideTitles(showTitles: false),
+                                    ),
+                                  ),
+                                  borderData: FlBorderData(show: true),
+                                  minX: 0,
+                                  maxX: _trendPeriod == 'week'
+                                      ? 6
+                                      : _trendPeriod == 'month'
+                                          ? 29
+                                          : 11,
+                                  minY: 0,
+                                  maxY: _getTrendSpots().isEmpty
+                                      ? 1000000.0
+                                      : _getTrendSpots()
+                                              .map((e) => e.y)
+                                              .reduce((a, b) => a > b ? a : b) *
+                                          1.2,
+                                  lineBarsData: [
+                                    LineChartBarData(
+                                      spots: _getTrendSpots(),
+                                      isCurved: true,
+                                      color: AppTheme.primaryColor,
+                                      barWidth: 3,
+                                      isStrokeCapRound: true,
+                                      dotData: const FlDotData(show: true),
+                                      belowBarData: BarAreaData(
+                                        show: true,
+                                        color: AppTheme.primaryColor
+                                            .withOpacity(0.1),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-              ),
-              const SizedBox(height: 16),
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: SizedBox(
-                    height: 220,
-                    child: _buildHeatmap(dailyTotals),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ],
         ),
       ),
