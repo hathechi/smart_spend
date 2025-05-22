@@ -9,15 +9,21 @@ class SettingsService extends ChangeNotifier {
   static const String _telegramBotTokenKey = 'telegram_bot_token';
   static const String _openAiApiKeyKey = 'openai_api_key';
   static const String _webhookUrlKey = 'webhook_url';
+  static const String _enableNotificationsKey = 'enableNotifications';
+  static const String _reminderTimeKey = 'reminderTime';
 
   late final SharedPreferences _prefs;
   bool _useSystemTheme = true;
   bool _isDarkMode = false;
   String _language = 'vi';
+  bool _enableNotifications = false;
+  DateTime _reminderTime = DateTime.now().add(const Duration(hours: 1));
 
   bool get useSystemTheme => _useSystemTheme;
   bool get isDarkMode => _isDarkMode;
   String get language => _language;
+  bool get enableNotifications => _enableNotifications;
+  DateTime get reminderTime => _reminderTime;
 
   set useSystemTheme(bool value) {
     _useSystemTheme = value;
@@ -48,6 +54,11 @@ class SettingsService extends ChangeNotifier {
     _useSystemTheme = _prefs.getBool(_useSystemThemeKey) ?? true;
     _isDarkMode = _prefs.getBool(_isDarkModeKey) ?? false;
     _language = _prefs.getString(_languageKey) ?? 'vi';
+    _enableNotifications = _prefs.getBool(_enableNotificationsKey) ?? false;
+    final reminderTimeStr = _prefs.getString(_reminderTimeKey);
+    if (reminderTimeStr != null) {
+      _reminderTime = DateTime.parse(reminderTimeStr);
+    }
     notifyListeners();
   }
 
@@ -89,5 +100,17 @@ class SettingsService extends ChangeNotifier {
     await _prefs.remove(_telegramChatIdKey);
     await _prefs.remove(_telegramBotTokenKey);
     await _prefs.remove(_openAiApiKeyKey);
+  }
+
+  set enableNotifications(bool value) {
+    _enableNotifications = value;
+    _prefs.setBool(_enableNotificationsKey, value);
+    notifyListeners();
+  }
+
+  set reminderTime(DateTime value) {
+    _reminderTime = value;
+    _prefs.setString(_reminderTimeKey, value.toIso8601String());
+    notifyListeners();
   }
 }

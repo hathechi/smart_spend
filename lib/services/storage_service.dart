@@ -31,6 +31,12 @@ class StorageService {
     await _dbHelper.deleteExpense(id);
   }
 
+  Future<void> insertExpenses(List<Expense> expenses) async {
+    for (final expense in expenses) {
+      await _dbHelper.insertExpense(expense);
+    }
+  }
+
   // Settings operations (still using SharedPreferences)
   Future<void> saveSettings(Map<String, dynamic> settings) async {
     final prefs = await SharedPreferences.getInstance();
@@ -72,5 +78,9 @@ class StorageService {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Failed to send data to webhook: \\n${response.body}');
     }
+  }
+
+  Future<void> deleteAllExpenses() async {
+    await _dbHelper.deleteAllExpenses();
   }
 }

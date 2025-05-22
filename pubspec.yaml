@@ -29,6 +29,7 @@ dependencies:
   fl_chart: ^0.71.0
   sqflite: ^2.3.2
   path: ^1.8.3
+  flutter_speed_dial: ^7.0.0
 
 dev_dependencies:
   flutter_test:

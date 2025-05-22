@@ -28,10 +28,20 @@ class _SettingsPageState extends State<SettingsPage> {
   final bool _isTestingOpenAI = false;
   bool _initialized = false;
 
+  // Reminder settings
+  final ReminderService _reminderService = ReminderService();
+  List<TimeOfDay> _reminderTimes = [];
+  DateTime _startDate = DateTime.now();
+  bool _enabled = true;
+  bool _loading = true;
+  String _reminderType = 'times';
+  int _intervalHours = 3;
+
   @override
   void initState() {
     super.initState();
     _initializeServices();
+    _loadReminderConfig();
   }
 
   Future<void> _initializeServices() async {
@@ -60,6 +70,33 @@ class _SettingsPageState extends State<SettingsPage> {
         _settingsService.getTelegramBotToken() ?? '';
     _openAiApiKeyController.text = _settingsService.getOpenAiApiKey() ?? '';
     _webhookUrlController.text = _settingsService.getWebhookUrl() ?? '';
+  }
+
+  Future<void> _loadReminderConfig() async {
+    final config = await _reminderService.loadConfig();
+    if (config != null) {
+      setState(() {
+        _reminderTimes = List.from(config.times);
+        _startDate = config.startDate;
+        _enabled = config.enabled;
+        if (config.intervalHours != null) {
+          _reminderType = 'interval';
+          _intervalHours = config.intervalHours!;
+        } else {
+          _reminderType = 'times';
+        }
+        _loading = false;
+      });
+    } else {
+      setState(() {
+        _reminderTimes = [const TimeOfDay(hour: 8, minute: 0)];
+        _startDate = DateTime.now();
+        _enabled = true;
+        _reminderType = 'times';
+        _intervalHours = 3;
+        _loading = false;
+      });
+    }
   }
 
   bool _validateTelegramConfig() {
@@ -163,6 +200,50 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  void _onReminderTypeChanged(String? v) {
+    setState(() => _reminderType = v!);
+  }
+
+  Future<void> _saveReminderConfig() async {
+    final config = ReminderConfig(
+      times: _reminderType == 'times' ? _reminderTimes : [],
+      startDate: _startDate,
+      enabled: _enabled,
+      intervalHours: _reminderType == 'interval' ? _intervalHours : null,
+    );
+    await _reminderService.saveConfig(config);
+    await ReminderNotificationService(_aiService).scheduleAllReminders();
+  }
+
+  void _addTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (picked != null && !_reminderTimes.contains(picked)) {
+      setState(() => _reminderTimes.add(picked));
+      _saveReminderConfig();
+    }
+  }
+
+  void _removeTime(int index) {
+    setState(() => _reminderTimes.removeAt(index));
+    _saveReminderConfig();
+  }
+
+  void _pickStartDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null) {
+      setState(() => _startDate = picked);
+      _saveReminderConfig();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settingsService = Provider.of<SettingsService>(context);
@@ -222,164 +303,243 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           const Divider(),
-          _initialized
-              ? _ReminderSettingsSection(aiService: _aiService)
-              : const Center(child: CircularProgressIndicator()),
-          // API Configuration Section
-          Card(
-            margin: const EdgeInsets.all(8.0),
-            child: ExpansionTile(
-              title: Text(
-                'settings.api.title'.tr(),
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              subtitle: Text('settings.api.subtitle'.tr()),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Telegram Configuration
-                      ExpansionTile(
-                        title: Text(
-                          'settings.api.telegram.title'.tr(),
-                          style: Theme.of(context).textTheme.titleSmall,
+          ListTile(
+            title: Text('settings.api.title'.tr()),
+            subtitle: Text('settings.api.subtitle'.tr()),
+          ),
+          ExpansionTile(
+            title: Text('reminder.title'.tr()),
+            subtitle: Text('reminder.subtitle'.tr()),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('reminder.enable'.tr(),
+                            style: Theme.of(context).textTheme.titleMedium),
+                        Switch(
+                          value: _enabled,
+                          onChanged: (v) {
+                            setState(() => _enabled = v);
+                            _saveReminderConfig();
+                          },
                         ),
-                        subtitle: Text('settings.api.telegram.subtitle'.tr()),
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              children: [
-                                TextField(
-                                  controller: _telegramChatIdController,
-                                  decoration: InputDecoration(
-                                    labelText:
-                                        'settings.api.telegram.chat_id'.tr(),
-                                    hintText:
-                                        'settings.api.telegram.chat_id_hint'
-                                            .tr(),
-                                    border: const OutlineInputBorder(),
-                                    prefixIcon: const Icon(Icons.chat),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text('${'reminder.start_date'.tr()}: '),
+                        TextButton(
+                          onPressed: _pickStartDate,
+                          child:
+                              Text(DateFormat('dd/MM/yyyy').format(_startDate)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  Radio<String>(
+                                    value: 'times',
+                                    groupValue: _reminderType,
+                                    onChanged: _onReminderTypeChanged,
                                   ),
-                                ),
-                                const SizedBox(height: 8),
-                                TextField(
-                                  controller: _telegramBotTokenController,
-                                  decoration: InputDecoration(
-                                    labelText:
-                                        'settings.api.telegram.bot_token'.tr(),
-                                    hintText:
-                                        'settings.api.telegram.bot_token_hint'
-                                            .tr(),
-                                    border: const OutlineInputBorder(),
-                                    prefixIcon: const Icon(Icons.security),
-                                  ),
-                                  obscureText: true,
-                                ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  // spacing: 8,
-                                  // runSpacing: 8,
-                                  alignment: WrapAlignment.start,
-                                  children: [
-                                    ElevatedButton.icon(
-                                      onPressed: _isTestingTelegram
-                                          ? null
-                                          : _testTelegramConnection,
-                                      icon: _isTestingTelegram
-                                          ? const SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                  strokeWidth: 2),
-                                            )
-                                          : const Icon(Icons.send),
-                                      label: Text(_isTestingTelegram
-                                          ? 'settings.api.telegram.testing'.tr()
-                                          : 'settings.api.telegram.test'.tr()),
-                                    ),
-                                    ElevatedButton.icon(
-                                      onPressed: _saveTelegramConfig,
-                                      icon: const Icon(Icons.save),
-                                      label: Text('settings.api.save'.tr()),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                  Text('reminder.choose_times'.tr()),
+                                ],
+                              ),
                             ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  Radio<String>(
+                                    value: 'interval',
+                                    groupValue: _reminderType,
+                                    onChanged: _onReminderTypeChanged,
+                                  ),
+                                  Text('reminder.repeat_every'.tr()),
+                                ],
+                              ),
+                            )
+                          ],
+                        ),
+                        if (_reminderType == 'interval') ...[
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              SizedBox(
+                                width: 60,
+                                child: TextField(
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        vertical: 4, horizontal: 8),
+                                    hintText: 'reminder.hour'.tr(),
+                                  ),
+                                  onChanged: (val) {
+                                    final n = int.tryParse(val);
+                                    if (n != null && n > 0) {
+                                      setState(() => _intervalHours = n);
+                                    }
+                                  },
+                                  controller: TextEditingController(
+                                      text: _intervalHours.toString()),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text('reminder.hour'.tr()),
+                              const SizedBox(width: 8),
+                              TextButton(
+                                onPressed: () {
+                                  FocusScope.of(context).unfocus();
+                                  _saveReminderConfig();
+                                },
+                                child: Text('reminder.done'.tr()),
+                              ),
+                            ],
                           ),
                         ],
-                      ),
-                      const Divider(),
-                      // OpenAI API Key
-                      ExpansionTile(
-                        title: Text(
-                          'settings.api.openai.title'.tr(),
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        subtitle: Text('settings.api.openai.subtitle'.tr()),
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              children: [
-                                TextField(
-                                  controller: _openAiApiKeyController,
-                                  decoration: InputDecoration(
-                                    labelText:
-                                        'settings.api.openai.api_key'.tr(),
-                                    hintText:
-                                        'settings.api.openai.api_key_hint'.tr(),
-                                    border: const OutlineInputBorder(),
-                                    prefixIcon: const Icon(Icons.key),
-                                  ),
-                                  obscureText: true,
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    ElevatedButton.icon(
-                                      onPressed: _saveOpenAiApiKey,
-                                      icon: const Icon(Icons.save),
-                                      label: Text('settings.api.save'.tr()),
+                        if (_reminderType == 'times') ...[
+                          const SizedBox(height: 8),
+                          Text('${'reminder.reminder_times'.tr()}:'),
+                          ..._reminderTimes
+                              .asMap()
+                              .entries
+                              .map((entry) => ListTile(
+                                    title: Text(entry.value.format(context)),
+                                    trailing: IconButton(
+                                      icon: const Icon(Icons.delete_outline),
+                                      onPressed: () => _removeTime(entry.key),
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                TextField(
-                                  controller: _webhookUrlController,
-                                  decoration: const InputDecoration(
-                                    labelText:
-                                        'Webhook URL (n8n, Google Sheets)',
-                                    hintText: 'Nhập link webhook của bạn',
-                                    border: OutlineInputBorder(),
-                                    prefixIcon: Icon(Icons.link),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    ElevatedButton.icon(
-                                      onPressed: _saveWebhookUrl,
-                                      icon: const Icon(Icons.save),
-                                      label: const Text('Lưu Webhook'),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                  )),
+                          TextButton.icon(
+                            onPressed: _addTime,
+                            icon: const Icon(Icons.add),
+                            label: Text('reminder.add_time'.tr()),
                           ),
                         ],
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          ExpansionTile(
+            title: Text('settings.api.telegram.title'.tr()),
+            subtitle: Text('settings.api.telegram.subtitle'.tr()),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _telegramChatIdController,
+                      decoration: InputDecoration(
+                        labelText: 'settings.api.telegram.chat_id'.tr(),
+                        hintText: 'settings.api.telegram.chat_id_hint'.tr(),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _telegramBotTokenController,
+                      decoration: InputDecoration(
+                        labelText: 'settings.api.telegram.bot_token'.tr(),
+                        hintText: 'settings.api.telegram.bot_token_hint'.tr(),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _saveTelegramConfig,
+                            child: Text('settings.api.telegram.save'.tr()),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _isTestingTelegram
+                                ? null
+                                : _testTelegramConnection,
+                            child: _isTestingTelegram
+                                ? const CircularProgressIndicator()
+                                : Text('settings.api.telegram.test'.tr()),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          ExpansionTile(
+            title: Text('settings.api.openai.title'.tr()),
+            subtitle: Text('settings.api.openai.subtitle'.tr()),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _openAiApiKeyController,
+                      decoration: InputDecoration(
+                        labelText: 'settings.api.openai.api_key'.tr(),
+                        hintText: 'settings.api.openai.api_key_hint'.tr(),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _saveOpenAiApiKey,
+                      child: Text('settings.api.openai.save'.tr()),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          ExpansionTile(
+            title: Text('settings.api.webhook.title'.tr()),
+            subtitle: Text('settings.api.webhook.subtitle'.tr()),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _webhookUrlController,
+                      decoration: InputDecoration(
+                        labelText: 'settings.api.webhook.url'.tr(),
+                        hintText: 'settings.api.webhook.url_hint'.tr(),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _saveWebhookUrl,
+                      child: Text('settings.api.webhook.save'.tr()),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

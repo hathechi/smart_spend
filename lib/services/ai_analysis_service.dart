@@ -87,10 +87,11 @@ Hãy cho mình biết:
 $sanitizedMonthExpenses
 
 Hãy cho mình biết:
-1. 💰 Tổng chi tiêu tháng này và khoản chi lớn nhất tháng
-2. 🎯 Danh mục chi nhiều nhất tháng
-3. 📈 So sánh chi tiêu hôm nay với trung bình ngày trong tháng
-4. 💡 Một gợi ý tiết kiệm cho tháng này
+1. 💰 Tổng chi tiêu tháng này
+2. 💰 Khoản chi lớn nhất tháng
+3. 🎯 Danh mục chi nhiều nhất tháng
+4. 📈 So sánh chi tiêu hôm nay với trung bình ngày trong tháng
+5. 💡 Một gợi ý tiết kiệm cho tháng này
 
 Trả lời ngắn gọn, vui vẻ và sử dụng emoji nhé! Không cần phân tích quá chi tiết đâu 😉
 ''';

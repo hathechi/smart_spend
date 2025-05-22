@@ -26,18 +26,18 @@
     "list": "Danh sách",
     "charts": "Biểu đồ",
     "total": "Tổng chi tiêu",
-    "category": "Danh mục",
-    "daily": "Theo ngày",
-    "no_data": "Không có dữ liệu để hiển thị",
-    "add_new": "Hãy thêm chi tiêu mới",
     "empty": "Chưa có chi tiêu nào",
+    "category": "Danh mục",
+    "daily": "Hàng ngày",
+    "no_data": "Không có dữ liệu để hiển thị",
+    "add_new": "Thêm chi tiêu mới",
     "delete_confirm": "Bạn có chắc chắn muốn xóa chi tiêu này?",
-    "delete_success": "Đã xóa chi tiêu thành công",
-    "delete_error": "Có lỗi xảy ra khi xóa chi tiêu",
+    "delete_success": "Xóa chi tiêu thành công",
+    "delete_error": "Lỗi khi xóa chi tiêu",
     "analyze": "Phân tích",
     "analyzing": "Đang phân tích...",
-    "analyze_success": "Đã gửi báo cáo chi tiêu thành công",
-    "analyze_error": "Có lỗi xảy ra khi phân tích chi tiêu",
+    "analyze_success": "Gửi báo cáo chi tiêu thành công",
+    "analyze_error": "Lỗi khi phân tích chi tiêu",
     "filter": {
       "today": "Hôm nay",
       "yesterday": "Hôm qua",
@@ -50,9 +50,8 @@
     "chart": {
       "by_category": "Chi tiêu theo danh mục",
       "by_date": "Chi tiêu theo ngày",
-      "category_details": "Chi tiết theo danh mục",
-      "no_data": "Không có dữ liệu chi tiêu trong tháng này",
-      "this_month": "Tháng {month}"
+      "category_details": "Chi tiết danh mục",
+      "no_data": "Không có dữ liệu chi tiêu"
     }
   },
   "settings": {
@@ -60,7 +59,7 @@
     "appearance": {
       "title": "Giao diện",
       "subtitle": "Tùy chỉnh giao diện ứng dụng",
-      "use_system": "Sử dụng theme hệ thống",
+      "use_system": "Sử dụng giao diện hệ thống",
       "dark_mode": "Chế độ tối"
     },
     "language": {
@@ -75,18 +74,15 @@
       "subtitle": "Quản lý thông báo",
       "daily_report": "Báo cáo hàng ngày",
       "weekly_report": "Báo cáo hàng tuần",
-      "monthly_report": "Báo cáo hàng tháng"
-    },
-    "about": {
-      "title": "Giới thiệu",
-      "subtitle": "Thông tin ứng dụng",
-      "version": "Phiên bản",
-      "developer": "Nhà phát triển",
-      "contact": "Liên hệ"
+      "monthly_report": "Báo cáo hàng tháng",
+      "enable": "Bật thông báo",
+      "reminder_settings": "Cài đặt nhắc nhở",
+      "reminder_settings_subtitle": "Cấu hình thời gian nhắc nhở",
+      "reminder_time": "Thời gian nhắc nhở"
     },
     "api": {
       "title": "Cấu hình API",
-      "subtitle": "Cấu hình các API và dịch vụ bên ngoài",
+      "subtitle": "Cấu hình API và dịch vụ bên ngoài",
       "save": "Lưu cấu hình",
       "telegram": {
         "title": "Cấu hình Telegram",
@@ -100,18 +96,27 @@
         "test": "Kiểm tra kết nối",
         "testing": "Đang kiểm tra...",
         "test_success": "Kết nối thành công! Kiểm tra tin nhắn Telegram của bạn.",
-        "test_error": "Kết nối thất bại. Vui lòng kiểm tra lại cấu hình.",
+        "test_error": "Kết nối thất bại. Vui lòng kiểm tra cấu hình.",
         "save_success": "Đã lưu cấu hình Telegram",
-        "save_error": "Không thể lưu cấu hình Telegram"
+        "save_error": "Không thể lưu cấu hình Telegram",
+        "save": "Lưu cấu hình"
       },
       "openai": {
         "title": "OpenAI API",
-        "subtitle": "Cấu hình API key cho OpenAI",
+        "subtitle": "Cấu hình OpenAI API key",
         "api_key": "API Key",
         "api_key_hint": "Nhập OpenAI API Key",
         "api_key_required": "Vui lòng nhập API Key",
         "save_success": "Đã lưu API key",
-        "save_error": "Không thể lưu API key"
+        "save_error": "Không thể lưu API key",
+        "save": "Lưu cấu hình"
+      },
+      "webhook": {
+        "title": "Webhook",
+        "subtitle": "Cấu hình webhook để gửi dữ liệu chi tiêu",
+        "url": "Webhook URL",
+        "url_hint": "Nhập URL webhook",
+        "save": "Lưu cấu hình"
       }
     }
   },
@@ -124,9 +129,9 @@
     "no_expenses": "Không có chi tiêu để phân tích",
     "analyze": "Phân tích",
     "analyzing": "Đang phân tích...",
-    "analysis_success": "Phân tích chi tiêu thành công",
+    "analysis_success": "Phân tích chi tiêu hoàn tất",
     "analysis_error": "Không thể phân tích chi tiêu",
-    "report_sent": "Đã gửi báo cáo thành công",
+    "report_sent": "Gửi báo cáo thành công",
     "report_error": "Không thể gửi báo cáo"
   },
   "filters": {
@@ -140,24 +145,38 @@
   },
   "reminder": {
     "title": "Nhắc nhở chi tiêu",
+    "subtitle": "Cấu hình nhắc nhở chi tiêu",
+    "enable": "Bật nhắc nhở",
     "start_date": "Ngày bắt đầu",
-    "choose_times": "Chọn khung giờ cụ thể",
+    "choose_times": "Chọn thời gian cụ thể",
     "repeat_every": "Lặp lại mỗi",
     "hour": "giờ",
     "done": "Xong",
-    "reminder_times": "Các khung giờ nhắc nhở",
-    "add_time": "Thêm khung giờ"
+    "reminder_times": "Thời gian nhắc nhở",
+    "add_time": "Thêm thời gian"
   },
   "chart": {
-    "no_data": "Không có dữ liệu chi tiêu trong tháng này",
+    "no_data": "Không có dữ liệu chi tiêu cho tháng này",
     "this_month": "{month}",
     "by_category": "Chi tiêu theo danh mục",
     "by_date": "Chi tiêu theo ngày",
-    "by_type": "Chọn loại biểu đồ",
+    "by_type": "Loại biểu đồ",
     "pie_chart": "Biểu đồ tròn",
     "bar_chart": "Biểu đồ cột",
     "line_chart": "Biểu đồ đường",
     "heatmap": "Biểu đồ nhiệt",
-    "select_chart_type": "Chọn loại biểu đồ để xem trực quan hóa chi tiêu theo ngày, tuần, tháng hoặc danh mục."
+    "select_chart_type": "Chọn loại biểu đồ để hiển thị chi tiêu theo ngày, tuần, tháng hoặc danh mục."
+  },
+  "import": {
+    "title": "Import dữ liệu",
+    "api_get": "API (GET)",
+    "paste_json": "Dán JSON",
+    "paste_json_label": "Dán chuỗi JSON",
+    "paste_json_hint": "[{...}]",
+    "cancel": "Hủy",
+    "import": "Import",
+    "success": "Import dữ liệu thành công!",
+    "fail": "Import thất bại: {error}",
+    "webhook": "Gửi Webhook"
   }
 }

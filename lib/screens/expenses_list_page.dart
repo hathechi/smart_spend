@@ -8,6 +8,9 @@ import 'package:smart_spend/services/telegram_service.dart';
 import 'package:smart_spend/theme/app_theme.dart';
 import 'package:smart_spend/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 
 class ExpensesListPage extends StatefulWidget {
   const ExpensesListPage({super.key});
@@ -206,6 +209,196 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
     }
   }
 
+  void _showImportDialog() {
+    final controller = TextEditingController();
+    final jsonController = TextEditingController();
+    bool isJsonMode = false;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('import.title'.tr()),
+              content: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    // maxWidth: 350,
+                    maxHeight: MediaQuery.of(context).size.height * 0.6,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            ChoiceChip(
+                              label: Text('import.api_get'.tr()),
+                              selected: !isJsonMode,
+                              onSelected: (v) =>
+                                  setState(() => isJsonMode = !v),
+                            ),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: Text('import.paste_json'.tr()),
+                              selected: isJsonMode,
+                              onSelected: (v) => setState(() => isJsonMode = v),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (!isJsonMode)
+                        TextField(
+                          controller: controller,
+                          decoration: const InputDecoration(
+                            labelText: 'API URL',
+                            hintText: 'https://your-api.com/data',
+                          ),
+                          autofocus: true,
+                        ),
+                      if (isJsonMode)
+                        SizedBox(
+                          width: 320,
+                          child: TextField(
+                            controller: jsonController,
+                            decoration: InputDecoration(
+                              labelText: 'import.paste_json_label'.tr(),
+                              hintText: 'import.paste_json_hint'.tr(),
+                            ),
+                            minLines: 4,
+                            maxLines: 12,
+                            keyboardType: TextInputType.multiline,
+                            autofocus: true,
+                            style: const TextStyle(fontFamily: 'monospace'),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('import.cancel'.tr()),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (!isJsonMode) {
+                      final url = controller.text.trim();
+                      if (url.isNotEmpty) {
+                        Navigator.of(context).pop();
+                        _importFromApi(url);
+                      }
+                    } else {
+                      final jsonStr = jsonController.text.trim();
+                      if (jsonStr.isNotEmpty) {
+                        Navigator.of(context).pop();
+                        _importFromJson(jsonStr);
+                      }
+                    }
+                  },
+                  child: Text('import.import'.tr()),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _importFromApi(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (!uri.isAbsolute) throw Exception('URL không hợp lệ');
+      final response = await http.get(uri);
+      if (response.statusCode == 200) {
+        final data = response.body;
+        final List<dynamic> jsonList = (data is String)
+            ? (data.isNotEmpty
+                ? (data.startsWith('[') ? jsonDecode(data) : [jsonDecode(data)])
+                : [])
+            : data;
+        final expenses = jsonList.map((e) {
+          final map = Map<String, dynamic>.from(e);
+          map['purpose'] = map['purpose']?.toString() ?? '';
+          final amount = map['amount'];
+          map['amount'] = (amount is int)
+              ? amount.toDouble()
+              : (amount is double
+                  ? amount
+                  : double.tryParse(amount.toString()) ?? 0.0);
+          map['created_at'] =
+              map['created_at'] ?? DateTime.now().toIso8601String();
+          return Expense.fromMap(map);
+        }).toList();
+        await _storageService.deleteAllExpenses();
+        await _storageService.insertExpenses(expenses);
+        await _loadExpenses();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Import dữ liệu thành công!'),
+                backgroundColor: Colors.green),
+          );
+        }
+      } else {
+        throw Exception('Lỗi khi lấy dữ liệu: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Import thất bại: $e'),
+              backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _importFromJson(String jsonStr) async {
+    try {
+      final List<dynamic> jsonList = (jsonStr.isNotEmpty)
+          ? (jsonStr.trim().startsWith('[')
+              ? jsonDecode(jsonStr)
+              : [jsonDecode(jsonStr)])
+          : [];
+      final expenses = jsonList.map((e) {
+        final map = Map<String, dynamic>.from(e);
+        map['purpose'] = map['purpose']?.toString() ?? '';
+        final amount = map['amount'];
+        map['amount'] = (amount is int)
+            ? amount.toDouble()
+            : (amount is double
+                ? amount
+                : double.tryParse(amount.toString()) ?? 0.0);
+        map['created_at'] =
+            map['created_at'] ?? DateTime.now().toIso8601String();
+        return Expense.fromMap(map);
+      }).toList();
+      await _storageService.deleteAllExpenses();
+      await _storageService.insertExpenses(expenses);
+      await _loadExpenses();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Import dữ liệu thành công!'),
+              backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Import thất bại: $e'),
+              backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_initialized) {
@@ -220,217 +413,206 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
+        child: Stack(
           children: [
-            Row(
+            Column(
               children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.grey.withOpacity(0.2),
-                      ),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _selectedFilter,
-                        isExpanded: true,
-                        items: _dateFilters.entries.map((entry) {
-                          return DropdownMenuItem<String>(
-                            value: entry.key,
-                            child: Text(entry.value),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _selectedFilter = value;
-                              _applyFilter();
-                            });
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: 'Gửi dữ liệu lên Google Sheets',
-                  onPressed: _isSendingWebhook ? null : _sendExpensesToWebhook,
-                  icon: _isSendingWebhook
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.cloud_upload, color: Colors.orange),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: _isAnalyzing ? null : _analyzeExpenses,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  icon: _isAnalyzing
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Icon(Icons.analytics),
-                  label: Text(
-                    _isAnalyzing
-                        ? 'messages.analyzing'.tr()
-                        : 'messages.analyze'.tr(),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (_filteredExpenses.isNotEmpty) ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Row(
                   children: [
-                    Text(
-                      'expense.total'.tr(),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      _currencyFormat.format(totalAmount),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.grey.withOpacity(0.2),
+                          ),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _selectedFilter,
+                            isExpanded: true,
+                            items: _dateFilters.entries.map((entry) {
+                              return DropdownMenuItem<String>(
+                                value: entry.key,
+                                child: Text(entry.value),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() {
+                                  _selectedFilter = value;
+                                  _applyFilter();
+                                });
+                              }
+                            },
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            Expanded(
-              child: _filteredExpenses.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.receipt_long,
-                            size: 64,
-                            color: Colors.grey,
+                const SizedBox(height: 16),
+                if (_filteredExpenses.isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'expense.total'.tr(),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'expense.no_data'.tr(),
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              color: Colors.grey,
-                            ),
+                        ),
+                        Text(
+                          _currencyFormat.format(totalAmount),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.w600,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'expense.add_new'.tr(),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: _filteredExpenses.length,
-                      itemBuilder: (context, index) {
-                        final expense = _filteredExpenses[index];
-                        return Dismissible(
-                          key: Key(expense.id.toString()),
-                          direction: DismissDirection.endToStart,
-                          background: Container(
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 20),
-                            decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.red,
-                            ),
-                          ),
-                          onDismissed: (direction) {
-                            _deleteExpense(expense);
-                          },
-                          child: Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              side: BorderSide(
-                                color: Colors.grey.withOpacity(0.1),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                Expanded(
+                  child: _filteredExpenses.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.receipt_long,
+                                size: 64,
+                                color: Colors.grey,
                               ),
-                            ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              leading: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.receipt_long,
-                                  color: AppTheme.primaryColor,
-                                  size: 20,
-                                ),
-                              ),
-                              title: Text(
-                                expense.purpose,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              subtitle: Text(
-                                DateFormat('HH:mm').format(expense.date),
-                                style: theme.textTheme.bodySmall?.copyWith(
+                              const SizedBox(height: 16),
+                              Text(
+                                'expense.no_data'.tr(),
+                                style: theme.textTheme.titleLarge?.copyWith(
                                   color: Colors.grey,
                                 ),
                               ),
-                              trailing: Text(
-                                _currencyFormat.format(expense.amount),
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  color: AppTheme.primaryColor,
-                                  fontWeight: FontWeight.w600,
+                              const SizedBox(height: 8),
+                              Text(
+                                'expense.add_new'.tr(),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: Colors.grey,
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                        );
-                      },
-                    ),
+                        )
+                      : ListView.builder(
+                          itemCount: _filteredExpenses.length,
+                          itemBuilder: (context, index) {
+                            final expense = _filteredExpenses[index];
+                            return Dismissible(
+                              key: Key(expense.id.toString()),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(right: 20),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.red,
+                                ),
+                              ),
+                              onDismissed: (direction) {
+                                _deleteExpense(expense);
+                              },
+                              child: Card(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  side: BorderSide(
+                                    color: Colors.grey.withOpacity(0.1),
+                                  ),
+                                ),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  leading: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryColor
+                                          .withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(
+                                      Icons.receipt_long,
+                                      color: AppTheme.primaryColor,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    expense.purpose,
+                                    style:
+                                        theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    DateFormat('HH:mm').format(expense.date),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  trailing: Text(
+                                    _currencyFormat.format(expense.amount),
+                                    style:
+                                        theme.textTheme.titleMedium?.copyWith(
+                                      color: AppTheme.primaryColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: SpeedDial(
+                icon: Icons.add,
+                activeIcon: Icons.close,
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                children: [
+                  SpeedDialChild(
+                    child: const Icon(Icons.download, color: Colors.blue),
+                    label: 'Import',
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.blue,
+                    onTap: _showImportDialog,
+                  ),
+                  SpeedDialChild(
+                    child: const Icon(Icons.cloud_upload, color: Colors.orange),
+                    label: 'Gửi Webhook',
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.orange,
+                    onTap: _isSendingWebhook ? null : _sendExpensesToWebhook,
+                  ),
+                ],
+              ),
             ),
           ],
         ),

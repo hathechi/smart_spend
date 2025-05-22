@@ -74,7 +74,11 @@
       "subtitle": "Manage notifications",
       "daily_report": "Daily report",
       "weekly_report": "Weekly report",
-      "monthly_report": "Monthly report"
+      "monthly_report": "Monthly report",
+      "enable": "Enable notifications",
+      "reminder_settings": "Reminder Settings",
+      "reminder_settings_subtitle": "Configure reminder time",
+      "reminder_time": "Reminder Time"
     },
     "about": {
       "title": "About",
@@ -101,7 +105,8 @@
         "test_success": "Connection successful! Check your Telegram messages.",
         "test_error": "Connection failed. Please check your configuration.",
         "save_success": "Telegram configuration saved",
-        "save_error": "Could not save Telegram configuration"
+        "save_error": "Could not save Telegram configuration",
+        "save": "Save Configuration"
       },
       "openai": {
         "title": "OpenAI API",
@@ -110,7 +115,15 @@
         "api_key_hint": "Enter OpenAI API Key",
         "api_key_required": "Please enter API Key",
         "save_success": "API key saved",
-        "save_error": "Could not save API key"
+        "save_error": "Could not save API key",
+        "save": "Save Configuration"
+      },
+      "webhook": {
+        "title": "Webhook",
+        "subtitle": "Configure webhook to send expense data",
+        "url": "Webhook URL",
+        "url_hint": "Enter webhook URL",
+        "save": "Save Configuration"
       }
     }
   },
@@ -139,6 +152,8 @@
   },
   "reminder": {
     "title": "Spending Reminder",
+    "subtitle": "Configure spending reminders",
+    "enable": "Enable reminder",
     "start_date": "Start date",
     "choose_times": "Choose specific times",
     "repeat_every": "Repeat every",
@@ -158,5 +173,17 @@
     "line_chart": "Line chart",
     "heatmap": "Heatmap",
     "select_chart_type": "Select a chart type to visualize your expenses by day, week, month, or category."
+  },
+  "import": {
+    "title": "Import Data",
+    "api_get": "API (GET)",
+    "paste_json": "Paste JSON",
+    "paste_json_label": "Paste JSON string",
+    "paste_json_hint": "[{...}]",
+    "cancel": "Cancel",
+    "import": "Import",
+    "success": "Data imported successfully!",
+    "fail": "Import failed: {error}",
+    "webhook": "Send Webhook"
   }
 }
