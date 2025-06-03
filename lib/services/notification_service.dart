@@ -79,4 +79,27 @@ class NotificationService {
 
     return scheduledDate;
   }
+
+  Future<void> showNotification(
+      {required String title, required String body}) async {
+    await _notifications.show(
+      DateTime.now().millisecondsSinceEpoch ~/ 1000, // unique id
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'default_channel',
+          'Thông báo',
+          channelDescription: 'Kênh thông báo chung',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+    );
+  }
 }

@@ -11,6 +11,10 @@ import 'package:smart_spend/services/notification_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/migration_service.dart';
+import 'package:smart_spend/services/ai_analysis_service.dart';
+import 'package:smart_spend/services/telegram_service.dart';
+import 'package:smart_spend/services/scheduler_service.dart';
+import 'package:smart_spend/services/storage_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,6 +60,16 @@ void main() async {
   // Perform migration
   final migrationService = MigrationService();
   await migrationService.migrateExpenses();
+
+  // Khởi tạo AIAnalysisService và SchedulerService
+  final telegramService = TelegramService(settingsService);
+  final aiAnalysisService = AIAnalysisService(
+    StorageService(),
+    telegramService,
+    settingsService,
+  );
+  final scheduler = SchedulerService(aiAnalysisService, prefs);
+  scheduler.startScheduler();
 
   runApp(
     EasyLocalization(

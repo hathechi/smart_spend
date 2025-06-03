@@ -30,7 +30,6 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
   bool _isSendingWebhook = false;
   String _selectedFilter = 'today';
   bool _initialized = false;
-  final _listKey = GlobalKey<AnimatedListState>();
 
   final Map<String, String> _dateFilters = {
     'all': 'filters.all'.tr(),
@@ -39,13 +38,37 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
     'this_week': 'filters.this_week'.tr(),
     'last_week': 'filters.last_week'.tr(),
     'this_month': 'filters.this_month'.tr(),
-    'last_month': 'filters.last_month'.tr(),
   };
+
+  // Thêm map để lưu các tháng trước đó
+  final Map<String, String> _previousMonths = {};
 
   @override
   void initState() {
     super.initState();
     _initializeServices();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _initializePreviousMonths();
+  }
+
+  String capitalizeFirst(String s) =>
+      s.isNotEmpty ? s[0].toUpperCase() + s.substring(1) : s;
+
+  void _initializePreviousMonths() {
+    _previousMonths.clear();
+    final now = DateTime.now();
+    for (int i = 1; i <= 6; i++) {
+      final month = DateTime(now.year, now.month - i, 1);
+      final monthKey = 'month_${month.year}_${month.month}';
+      final monthNameRaw =
+          DateFormat.yMMMM(context.locale.languageCode).format(month);
+      final monthName = capitalizeFirst(monthNameRaw);
+      _previousMonths[monthKey] = monthName;
+    }
   }
 
   Future<void> _initializeServices() async {
@@ -67,11 +90,18 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
     final expenses = await _storageService.getExpenses();
     setState(() {
       _expenses = expenses;
-      _applyFilter();
+      _filteredExpenses = _filterExpenses(expenses, _selectedFilter);
     });
   }
 
-  void _applyFilter() {
+  void _onFilterChanged(String value) {
+    setState(() {
+      _selectedFilter = value;
+      _filteredExpenses = _filterExpenses(_expenses, value);
+    });
+  }
+
+  List<Expense> _filterExpenses(List<Expense> expenses, String filter) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
@@ -80,43 +110,54 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
     final thisMonthStart = DateTime(now.year, now.month, 1);
     final lastMonthStart = DateTime(now.year, now.month - 1, 1);
 
-    setState(() {
-      _filteredExpenses = _expenses.where((expense) {
-        final expenseDate = DateTime(
-          expense.date.year,
-          expense.date.month,
-          expense.date.day,
-        );
-
-        switch (_selectedFilter) {
+    return expenses.where((expense) {
+      final expenseDate = DateTime(
+        expense.date.year,
+        expense.date.month,
+        expense.date.day,
+      );
+      bool isIncluded = false;
+      if (filter.startsWith('month_')) {
+        final parts = filter.split('_');
+        final year = int.parse(parts[1]);
+        final month = int.parse(parts[2]);
+        isIncluded = expenseDate.year == year && expenseDate.month == month;
+      } else {
+        switch (filter) {
           case 'today':
-            return expenseDate.isAtSameMomentAs(today);
+            isIncluded = expenseDate.year == today.year &&
+                expenseDate.month == today.month &&
+                expenseDate.day == today.day;
+            break;
           case 'yesterday':
-            return expenseDate.isAtSameMomentAs(yesterday);
+            isIncluded = expenseDate.year == yesterday.year &&
+                expenseDate.month == yesterday.month &&
+                expenseDate.day == yesterday.day;
+            break;
           case 'this_week':
-            return expenseDate
+            final weekEnd = thisWeekStart.add(const Duration(days: 6));
+            isIncluded = expenseDate
                     .isAfter(thisWeekStart.subtract(const Duration(days: 1))) &&
-                expenseDate
-                    .isBefore(thisWeekStart.add(const Duration(days: 7)));
+                expenseDate.isBefore(weekEnd.add(const Duration(days: 1)));
+            break;
           case 'last_week':
-            return expenseDate
+            final lastWeekEnd = lastWeekStart.add(const Duration(days: 6));
+            isIncluded = expenseDate
                     .isAfter(lastWeekStart.subtract(const Duration(days: 1))) &&
-                expenseDate
-                    .isBefore(lastWeekStart.add(const Duration(days: 7)));
+                expenseDate.isBefore(lastWeekEnd.add(const Duration(days: 1)));
+            break;
           case 'this_month':
-            return expenseDate.isAfter(
-                    thisMonthStart.subtract(const Duration(days: 1))) &&
-                expenseDate.isBefore(DateTime(now.year, now.month + 1, 1));
-          case 'last_month':
-            return expenseDate.isAfter(
-                    lastMonthStart.subtract(const Duration(days: 1))) &&
-                expenseDate.isBefore(thisMonthStart);
+            isIncluded =
+                expenseDate.year == now.year && expenseDate.month == now.month;
+            break;
           case 'all':
           default:
-            return true;
+            isIncluded = true;
+            break;
         }
-      }).toList();
-    });
+      }
+      return isIncluded;
+    }).toList();
   }
 
   Future<void> _deleteExpense(Expense expense) async {
@@ -402,56 +443,14 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
 
   Future<void> _addExpenseAnimated(Expense expense) async {
     await _storageService.saveExpense(expense);
-    // Lấy lại danh sách expenses và filter
-    final allExpenses = await _storageService.getExpenses();
-    _expenses = allExpenses;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final expenseDate =
-        DateTime(expense.date.year, expense.date.month, expense.date.day);
-    bool shouldShow = false;
-    switch (_selectedFilter) {
-      case 'today':
-        shouldShow = expenseDate.isAtSameMomentAs(today);
-        break;
-      case 'all':
-        shouldShow = true;
-        break;
-      // Có thể bổ sung các filter khác nếu cần
-      default:
-        shouldShow = true;
-    }
-    if (shouldShow) {
-      setState(() {
-        _filteredExpenses.insert(0, expense);
-        _listKey.currentState?.insertItem(0);
-      });
-    }
+    await _loadExpenses();
   }
 
   Future<void> _deleteExpenseAnimated(int index) async {
     final expense = _filteredExpenses[index];
     if (expense.id != null) {
       await _storageService.deleteExpense(expense.id!);
-      setState(() {
-        final removed = _filteredExpenses.removeAt(index);
-        _listKey.currentState?.removeItem(
-          index,
-          (context, animation) => SlideTransition(
-            position: animation.drive(
-              Tween(
-                begin: const Offset(1, 0),
-                end: const Offset(0, 0),
-              ).chain(CurveTween(curve: Curves.easeOut)),
-            ),
-            child: FadeTransition(
-              opacity: animation,
-              child: _buildExpenseTile(removed),
-            ),
-          ),
-          duration: const Duration(milliseconds: 400),
-        );
-      });
+      await _loadExpenses();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -462,6 +461,21 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _deleteExpenseById(int id) async {
+    await _storageService.deleteExpense(id);
+    await _loadExpenses();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('messages.delete_success'.tr()),
+          backgroundColor: AppTheme.primaryColor,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+        ),
+      );
     }
   }
 
@@ -500,7 +514,7 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
           ),
         ),
         subtitle: Text(
-          DateFormat('HH:mm').format(expense.date),
+          DateFormat('HH:mm - dd/MM/yyyy').format(expense.date),
           style: theme.textTheme.bodySmall?.copyWith(
             color: Colors.grey,
           ),
@@ -516,6 +530,59 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
     );
   }
 
+  /// Trả về khoảng ngày (from, to) cho filter hiện tại
+  Map<String, DateTime> getFilterRange() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final thisWeekStart = today.subtract(Duration(days: today.weekday - 1));
+    final lastWeekStart = thisWeekStart.subtract(const Duration(days: 7));
+    final thisMonthStart = DateTime(now.year, now.month, 1);
+    final lastMonthStart = DateTime(now.year, now.month - 1, 1);
+    final nextMonthStart = DateTime(now.year, now.month + 1, 1);
+
+    if (_selectedFilter.startsWith('month_')) {
+      final parts = _selectedFilter.split('_');
+      final year = int.parse(parts[1]);
+      final month = int.parse(parts[2]);
+      final from = DateTime(year, month, 1);
+      final to = DateTime(year, month + 1, 0); // ngày cuối tháng
+      return {'from': from, 'to': to};
+    }
+    switch (_selectedFilter) {
+      case 'today':
+        return {'from': today, 'to': today};
+      case 'yesterday':
+        return {'from': yesterday, 'to': yesterday};
+      case 'this_week':
+        return {
+          'from': thisWeekStart,
+          'to': thisWeekStart.add(const Duration(days: 6))
+        };
+      case 'last_week':
+        return {
+          'from': lastWeekStart,
+          'to': lastWeekStart.add(const Duration(days: 6))
+        };
+      case 'this_month':
+        return {
+          'from': thisMonthStart,
+          'to': DateTime(now.year, now.month + 1, 0)
+        };
+      case 'all':
+      default:
+        if (_expenses.isEmpty) return {};
+        final sorted = _expenses.toList()
+          ..sort((a, b) => a.date.compareTo(b.date));
+        return {
+          'from': DateTime(sorted.first.date.year, sorted.first.date.month,
+              sorted.first.date.day),
+          'to': DateTime(sorted.last.date.year, sorted.last.date.month,
+              sorted.last.date.day)
+        };
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_initialized) {
@@ -526,6 +593,25 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
       0,
       (sum, expense) => sum + expense.amount,
     );
+    final filterRange = getFilterRange();
+    final dateFormat = DateFormat('dd/MM/yyyy');
+
+    // Tạo danh sách items cho dropdown
+    final dropdownItems = [
+      ..._dateFilters.entries.map((entry) => DropdownMenuItem<String>(
+            value: entry.key,
+            child: Text(entry.value),
+          )),
+      const DropdownMenuItem<String>(
+        value: 'divider',
+        enabled: false,
+        child: Divider(),
+      ),
+      ..._previousMonths.entries.map((entry) => DropdownMenuItem<String>(
+            value: entry.key,
+            child: Text(entry.value),
+          )),
+    ];
 
     return SafeArea(
       child: Padding(
@@ -550,18 +636,10 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
                           child: DropdownButton<String>(
                             value: _selectedFilter,
                             isExpanded: true,
-                            items: _dateFilters.entries.map((entry) {
-                              return DropdownMenuItem<String>(
-                                value: entry.key,
-                                child: Text(entry.value),
-                              );
-                            }).toList(),
+                            items: dropdownItems,
                             onChanged: (value) {
-                              if (value != null) {
-                                setState(() {
-                                  _selectedFilter = value;
-                                  _applyFilter();
-                                });
+                              if (value != null && value != 'divider') {
+                                _onFilterChanged(value);
                               }
                             },
                           ),
@@ -578,22 +656,39 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
                       color: AppTheme.primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'expense.total'.tr(),
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'expense.total'.tr(),
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              _currencyFormat.format(totalAmount),
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          _currencyFormat.format(totalAmount),
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: AppTheme.primaryColor,
-                            fontWeight: FontWeight.w600,
+                        if (filterRange.isNotEmpty) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4, top: 6),
+                            child: Text(
+                              'Từ ${dateFormat.format(filterRange['from']!)} đến ${dateFormat.format(filterRange['to']!)}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.grey[700],
+                                fontStyle: FontStyle.normal,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -627,40 +722,87 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
                             ],
                           ),
                         )
-                      : AnimatedList(
-                          key: _listKey,
-                          initialItemCount: _filteredExpenses.length,
-                          itemBuilder: (context, index, animation) {
+                      : ListView.builder(
+                          itemCount: _filteredExpenses.length,
+                          itemBuilder: (context, index) {
                             final expense = _filteredExpenses[index];
-                            return SlideTransition(
-                              position: animation.drive(
-                                Tween(
-                                  begin: const Offset(1, 0),
-                                  end: const Offset(0, 0),
-                                ).chain(CurveTween(curve: Curves.easeOut)),
-                              ),
-                              child: FadeTransition(
-                                opacity: animation,
-                                child: Dismissible(
-                                  key: Key(expense.id.toString()),
-                                  direction: DismissDirection.endToStart,
-                                  background: Container(
-                                    alignment: Alignment.centerRight,
-                                    padding: const EdgeInsets.only(right: 20),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: const Icon(
-                                      Icons.delete_outline,
-                                      color: Colors.red,
-                                    ),
-                                  ),
-                                  onDismissed: (direction) {
-                                    _deleteExpenseAnimated(index);
-                                  },
-                                  child: _buildExpenseTile(expense),
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                side: BorderSide(
+                                  color: Colors.grey.withOpacity(0.1),
                                 ),
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        AppTheme.primaryColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.receipt_long,
+                                    color: AppTheme.primaryColor,
+                                    size: 20,
+                                  ),
+                                ),
+                                title: Text(
+                                  expense.purpose,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  DateFormat('HH:mm - dd/MM/yyyy')
+                                      .format(expense.date),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                trailing: (_selectedFilter == 'all' ||
+                                        _selectedFilter == 'today')
+                                    ? IconButton(
+                                        icon: const Icon(Icons.delete,
+                                            color: Colors.red),
+                                        onPressed: () async {
+                                          final confirm =
+                                              await showDialog<bool>(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: const Text('Xác nhận xóa'),
+                                              content: const Text(
+                                                  'Bạn có chắc muốn xóa chi tiêu này?'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                          context, false),
+                                                  child: const Text('Hủy'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                          context, true),
+                                                  child: const Text('Xóa',
+                                                      style: TextStyle(
+                                                          color: Colors.red)),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          if (confirm == true) {
+                                            _deleteExpenseById(expense.id!);
+                                          }
+                                        },
+                                      )
+                                    : null,
                               ),
                             );
                           },
@@ -752,7 +894,7 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
                 if (value != null) {
                   setState(() {
                     _selectedFilter = value;
-                    _applyFilter();
+                    _onFilterChanged(value);
                   });
                 }
               },
@@ -816,10 +958,13 @@ class _ExpensesListPageState extends State<ExpensesListPage> {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             subtitle: Text(
-              DateFormat('dd/MM/yyyy').format(expense.date),
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-              ),
+              DateFormat('HH:mm - dd/MM/yyyy').format(expense.date),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.6),
+                  ),
             ),
             trailing: Text(
               _currencyFormat.format(expense.amount),

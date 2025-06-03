@@ -56,7 +56,7 @@ class AIAnalysisService {
       final sanitizedTodayExpenses = todayExpenses.isNotEmpty
           ? todayExpenses
               .map((e) =>
-                  '💰 ${_currencyFormat.format(e.amount)} cho ${_sanitizeText(e.purpose)} vào ${DateFormat('HH:mm').format(e.date)}')
+                  '💰 ${_currencyFormat.format(e.amount)} cho ${(e.purpose)} vào ${DateFormat('HH:mm').format(e.date)}')
               .join('\n')
           : 'Không có chi tiêu nào trong ngày.';
 
@@ -64,7 +64,7 @@ class AIAnalysisService {
       final sanitizedMonthExpenses = monthExpenses.isNotEmpty
           ? monthExpenses
               .map((e) =>
-                  '💰 ${_currencyFormat.format(e.amount)} cho ${_sanitizeText(e.purpose)} vào ${DateFormat('dd/MM').format(e.date)}')
+                  '💰 ${_currencyFormat.format(e.amount)} cho ${(e.purpose)} vào ${DateFormat('dd/MM').format(e.date)}')
               .join('\n')
           : 'Không có chi tiêu nào trong tháng.';
 
